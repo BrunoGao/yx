@@ -1,0 +1,30 @@
+# CI/CD专用配置 - 构建和推送镜像
+
+services:
+  ljwx-redis:
+    build:
+      context: .
+      dockerfile: docker/redis/Dockerfile
+      args: [BUILD_ENV=ci]
+    image: ${REGISTRY}/ljwx-redis:${REDIS_VERSION}
+
+  ljwx-boot:
+    build:
+      context: .
+      dockerfile: ljwx-boot/ljwx-boot-admin/Dockerfile.prod
+      args: [BUILD_ENV=ci, MAVEN_OPTS=-Dmaven.test.skip=true]
+    image: ${REGISTRY}/ljwx-boot:${LJWX_BOOT_VERSION}
+
+  ljwx-bigscreen:
+    build:
+      context: ./ljwx-bigscreen/bigscreen
+      dockerfile: Dockerfile
+      args: [BUILD_ENV=ci]
+    image: ${REGISTRY}/ljwx-bigscreen:${BIGSCREEN_VERSION}
+
+  ljwx-admin:
+    build:
+      context: ./ljwx-admin
+      dockerfile: Dockerfile.prod
+      args: [BUILD_ENV=ci, NODE_ENV=production]
+    image: ${REGISTRY}/ljwx-admin:${ADMIN_VERSION} 

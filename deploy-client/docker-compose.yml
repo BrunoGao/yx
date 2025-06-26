@@ -1,0 +1,161 @@
+services:
+  mysql:
+    image: crpi-yilnm6upy4pmbp67.cn-shenzhen.personal.cr.aliyuncs.com/ljwx/ljwx-mysql:1.2.16
+    container_name: ljwx-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_PASSWORD:-123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-lj-06}
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - mysql_logs:/var/log/mysql
+      - ./backup/mysql:/backup/mysql
+      - ./client-data.sql:/docker-entrypoint-initdb.d/client/data.sql:ro
+      - ./wait-for-it.sh:/usr/local/bin/wait-for-it.sh
+    command:
+      - --default-authentication-plugin=mysql_native_password
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --max_connections=200
+      - --wait_timeout=28800
+      - --interactive_timeout=28800
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p123456"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - ljwx-network
+
+  redis:
+    image: crpi-yilnm6upy4pmbp67.cn-shenzhen.personal.cr.aliyuncs.com/ljwx/ljwx-redis:1.2.16
+    container_name: ljwx-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+      - redis_logs:/var/log/redis
+      - ./backup/redis:/backup/redis
+      - ./wait-for-it.sh:/usr/local/bin/wait-for-it.sh
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - ljwx-network
+
+  ljwx-boot:
+    image: crpi-yilnm6upy4pmbp67.cn-shenzhen.personal.cr.aliyuncs.com/ljwx/ljwx-boot:1.2.16
+    container_name: ljwx-boot
+    restart: unless-stopped
+    env_file:
+      - custom-config.env
+    environment:
+      SPRING_PROFILES_ACTIVE: common
+      MYSQL_HOST: ${MYSQL_HOST:-mysql}
+      MYSQL_PORT: ${MYSQL_PORT:-3306}
+      MYSQL_USER: ${MYSQL_USER:-root}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-lj-06}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: "123456"
+      TZ: Asia/Shanghai
+      SPRING_DATASOURCE_URL: jdbc:mysql://${MYSQL_HOST:-mysql}:${MYSQL_PORT:-3306}/${MYSQL_DATABASE:-lj-06}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_PASSWORD:-123456}
+      SPRING_DATASOURCE_DRIVER_CLASS_NAME: com.mysql.cj.jdbc.Driver
+      SPRING_DATA_REDIS_HOST: ${REDIS_HOST:-redis}
+      SPRING_DATA_REDIS_PORT: ${REDIS_PORT:-6379}
+      SPRING_DATA_REDIS_PASSWORD: "123456"
+    ports:
+      - "9998:9998"
+    volumes:
+      - ljwx_boot_logs:/app/ljwx-boot-logs
+      - ljwx_boot_data:/app/data
+      - ./backup/ljwx-boot:/backup/ljwx-boot
+      - ./wait-for-it.sh:/usr/local/bin/wait-for-it.sh
+    command: ["sh", "-c", "chmod +x /usr/local/bin/wait-for-it.sh && wait-for-it.sh mysql:3306 -t 60 && wait-for-it.sh redis:6379 -t 30 && java -jar /app/ljwx-boot-admin.jar"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9998/actuator/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+    networks:
+      - ljwx-network
+
+  ljwx-bigscreen:
+    image: crpi-yilnm6upy4pmbp67.cn-shenzhen.personal.cr.aliyuncs.com/ljwx/ljwx-bigscreen:1.2.16
+    container_name: ljwx-bigscreen
+    restart: unless-stopped
+    env_file:
+      - custom-config.env
+    environment:
+      MYSQL_HOST: ${MYSQL_HOST:-mysql}
+      MYSQL_PORT: ${MYSQL_PORT:-3306}
+      MYSQL_USER: ${MYSQL_USER:-root}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-lj-06}
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-123456}
+      IS_DOCKER: "true"
+      APP_PORT: 8001
+      TZ: Asia/Shanghai
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./custom-config.py:/app/config.py:ro
+      - ./custom-assets:/app/static/images:ro
+      - ljwx_bigscreen_logs:/app/logs
+      - ljwx_bigscreen_data:/app/data
+      - ./backup/ljwx-bigscreen:/backup/ljwx-bigscreen
+      - ./wait-for-it.sh:/usr/local/bin/wait-for-it.sh
+    command: ["sh", "-c", "chmod +x /usr/local/bin/wait-for-it.sh && wait-for-it.sh mysql:3306 -t 60 && wait-for-it.sh redis:6379 -t 30 && python app.py"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    networks:
+      - ljwx-network
+
+  ljwx-admin:
+    image: crpi-yilnm6upy4pmbp67.cn-shenzhen.personal.cr.aliyuncs.com/ljwx/ljwx-admin:1.2.16
+    container_name: ljwx-admin
+    ports:
+      - "8080:80"
+    depends_on: [ljwx-boot]
+    restart: unless-stopped
+    volumes:
+      - ./custom-admin-config.js:/usr/share/nginx/html/config.js:ro
+      - ./custom-assets:/usr/share/nginx/html/assets/custom:ro
+    environment: {ADMIN_CONF_MODE: "client"}
+    healthcheck: {test: ["CMD","wget","--no-verbose","--tries=1","--spider","http://localhost/"],interval: "30s",timeout: "10s",retries: 3,start_period: "10s"}
+    networks: [ljwx-network]
+
+volumes:
+  mysql_data:
+  mysql_logs:
+  redis_data:
+  redis_logs:
+  ljwx_boot_logs:
+  ljwx_boot_data:
+  ljwx_bigscreen_logs:
+  ljwx_bigscreen_data:
+  ljwx_admin_logs:
+
+networks:
+  ljwx-network:
+    driver: bridge

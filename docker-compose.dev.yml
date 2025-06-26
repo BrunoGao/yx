@@ -1,0 +1,54 @@
+# 开发环境专用配置 - 本地构建和热更新
+
+services:
+  ljwx-mysql:
+    volumes:
+      - ./data.sql:/docker-entrypoint-initdb.d/data.sql:ro
+      - ./docker/mysql/init-user.sql:/docker-entrypoint-initdb.d/init-user.sql:ro
+    environment:
+      MYSQL_LOG_CONSOLE: "true"
+
+  ljwx-redis:
+    build:
+      context: .
+      dockerfile: docker/redis/Dockerfile
+    environment:
+      REDIS_MAXMEMORY_POLICY: ${REDIS_MAXMEMORY_POLICY:-allkeys-lru}
+
+  ljwx-boot:
+    build:
+      context: .
+      dockerfile: ljwx-boot/ljwx-boot-admin/Dockerfile.dev
+    volumes: 
+      - ./ljwx-boot/ljwx-boot-admin/src/main/resources:/app/config:ro
+      - ./ljwx-boot/ljwx-boot-admin/src:/app/src:cached # 热更新
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://ljwx-mysql:3306/${MYSQL_DATABASE:-lj-06}?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: ${MYSQL_USER:-root}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      SPRING_DATA_REDIS_HOST: ljwx-redis
+      SPRING_DATA_REDIS_PORT: ${REDIS_PORT:-6379}
+      SPRING_DATA_REDIS_PASSWORD: ${REDIS_PASSWORD:-123456}
+
+  ljwx-bigscreen:
+    build:
+      context: ./ljwx-bigscreen/bigscreen
+      dockerfile: Dockerfile
+    volumes: 
+      - ./custom-config.py:/app/config.py:ro
+      - ./custom-assets:/app/static/images:ro
+      - ./ljwx-bigscreen/bigscreen:/app:cached # 热更新
+    env_file:
+      - custom-config.env
+    environment:
+      MYSQL_USER: ${MYSQL_USER:-root}
+      MYSQL_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+
+  ljwx-admin:
+    build:
+      context: ./ljwx-admin
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./ljwx-admin/src:/app/src:cached # 热更新
+    environment:
+      NODE_ENV: development 

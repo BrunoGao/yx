@@ -1,0 +1,130 @@
+# 企业级Docker Compose核心配置 - 仅业务服务
+
+x-logging: &log # 统一日志配置模板
+  driver: json-file
+  options: {max-size: 10m, max-file: "5", labels: service,environment}
+
+x-healthcheck: &hc # 默认健康检查模板
+  interval: 60s
+  timeout: 30s
+  retries: 5
+  start_period: 120s
+
+services:
+  ljwx-mysql:
+    image: mysql:8.0
+    container_name: ljwx-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-lj-06}
+      MYSQL_CHARACTER_SET_SERVER: utf8mb4
+      MYSQL_COLLATION_SERVER: utf8mb4_unicode_ci
+      TZ: Asia/Shanghai
+    ports: ["${MYSQL_PORT:-3306}:3306"]
+    volumes: [mysql_data:/var/lib/mysql, mysql_logs:/var/log/mysql, mysql_backup:/backup]
+    networks: [ljwx-network]
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-123456}"]
+      interval: 15s
+    logging: *log
+
+  ljwx-redis:
+    image: crpi-yilnm6upy4pmbp67.cn-shenzhen.personal.cr.aliyuncs.com/ljwx/ljwx-redis:${REDIS_VERSION:-1.2.15}
+    container_name: ljwx-redis
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-123456}
+      REDIS_PORT: ${REDIS_PORT:-6379}
+      REDIS_MAXMEMORY: ${REDIS_MAXMEMORY:-512mb}
+      TZ: Asia/Shanghai
+    ports: ["${REDIS_PORT:-6379}:${REDIS_PORT:-6379}"]
+    volumes: [redis_data:/data, redis_logs:/var/log/redis, redis_backup:/backup]
+    networks: [ljwx-network]
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:-123456}", "ping"]
+      interval: 10s
+      timeout: 5s
+    logging: *log
+
+  ljwx-boot:
+    image: crpi-yilnm6upy4pmbp67.cn-shenzhen.personal.cr.aliyuncs.com/ljwx/ljwx-boot:${LJWX_BOOT_VERSION:-1.2.15}
+    container_name: ljwx-boot
+    restart: unless-stopped
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-common,docker}
+      MYSQL_HOST: ljwx-mysql
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-lj-06}
+      REDIS_HOST: ljwx-redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-123456}
+      JVM_OPTS: ${JVM_OPTS:--Xms2g -Xmx4g -XX:+UseG1GC}
+      TZ: Asia/Shanghai
+      OSS_NAME: ${OSS_NAME:-local}
+    ports: ["${LJWX_BOOT_PORT:-9998}:9998", "9999:9999"]
+    volumes: [ljwx_boot_logs:/app/ljwx-boot-logs, ljwx_boot_data:/app/data]
+    depends_on: {ljwx-mysql: {condition: service_healthy}, ljwx-redis: {condition: service_healthy}}
+    networks: [ljwx-network]
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "curl", "-f", "http://localhost:9998/actuator/health"]
+      start_period: 180s
+    logging: *log
+
+  ljwx-bigscreen:
+    image: crpi-yilnm6upy4pmbp67.cn-shenzhen.personal.cr.aliyuncs.com/ljwx/ljwx-bigscreen:${BIGSCREEN_VERSION:-1.2.15}
+    container_name: ljwx-bigscreen
+    restart: unless-stopped
+    environment:
+      MYSQL_HOST: ljwx-mysql
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-lj-06}
+      REDIS_HOST: ljwx-redis
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-123456}
+      IS_DOCKER: "true"
+      APP_PORT: ${BIGSCREEN_PORT:-8001}
+      WORKERS: ${BIGSCREEN_WORKERS:-8}
+      TZ: Asia/Shanghai
+    ports: ["${BIGSCREEN_PORT:-8001}:8001"]
+    volumes: [ljwx_bigscreen_logs:/app/logs, ljwx_bigscreen_data:/app/data]
+    depends_on: {ljwx-mysql: {condition: service_healthy}, ljwx-redis: {condition: service_healthy}}
+    networks: [ljwx-network]
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "curl", "-f", "http://localhost:8001/index"]
+      start_period: 90s
+    logging: *log
+
+  ljwx-admin:
+    image: crpi-yilnm6upy4pmbp67.cn-shenzhen.personal.cr.aliyuncs.com/ljwx/ljwx-admin:${ADMIN_VERSION:-1.2.15}
+    container_name: ljwx-admin
+    restart: unless-stopped
+    environment: {VITE_API_URL: http://ljwx-boot:9998, TZ: Asia/Shanghai}
+    ports: ["${ADMIN_PORT:-8081}:80"]
+    volumes: [ljwx_admin_logs:/var/log/nginx]
+    depends_on: [ljwx-boot, ljwx-bigscreen]
+    networks: [ljwx-network]
+    healthcheck:
+      <<: *hc
+      test: ["CMD", "curl", "-f", "http://localhost:80/"]
+      start_period: 60s
+    logging: *log
+
+volumes:
+  mysql_data: # MySQL数据
+  mysql_logs: # MySQL日志
+  mysql_backup: # MySQL备份
+  redis_data: # Redis数据
+  redis_logs: # Redis日志
+  redis_backup: # Redis备份
+  ljwx_boot_logs: # Boot日志
+  ljwx_boot_data: # Boot数据
+  ljwx_bigscreen_logs: # 大屏日志
+  ljwx_bigscreen_data: # 大屏数据
+  ljwx_admin_logs: # 前端日志
+
+networks:
+  ljwx-network:
+    driver: bridge
+    ipam:
+      config: [{subnet: 172.20.0.0/16, gateway: 172.20.0.1}] 
