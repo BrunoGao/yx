@@ -4,3 +4,6 @@
 [submodule "ljwx-bigscreen"]
 	path = ljwx-bigscreen
 	url = http://192.168.1.83:3000/admin/ljwx-bigscreen.git
+[submodule "ljwx-boot"]
+	path = ljwx-boot
+	url = http://192.168.1.83:3000/admin/ljwx-boot.git
