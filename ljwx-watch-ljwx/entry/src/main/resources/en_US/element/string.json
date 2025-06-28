@@ -1,0 +1,84 @@
+{
+  "string": [
+    {
+      "name": "entry_MainAbility",
+      "value": "entry_MainAbility"
+    },
+    {
+      "name": "mainability_description",
+      "value": "Java_Empty Ability"
+    },
+    {
+      "name": "mainability_HelloWorld",
+      "value": "Hello World"
+    },
+    {
+      "name": "bluetoothability_description",
+      "value": "Java_Empty Ability"
+    },
+    {
+      "name": "bluetoothability_HelloWorld",
+      "value": "Hello World"
+    },
+    {
+      "name": "entry_bluetoothAbility",
+      "value": "entry_bluetoothAbility"
+    },
+    {
+      "name": "btability_description",
+      "value": "Java_Empty Ability"
+    },
+    {
+      "name": "btability_HelloWorld",
+      "value": "Hello World"
+    },
+    {
+      "name": "entry_btAbility",
+      "value": "entry_btAbility"
+    },
+    {
+      "name": "serviceability_description",
+      "value": "hap sample empty service"
+    },
+    {
+      "name": "pickerability_description",
+      "value": "Java_Empty Ability"
+    },
+    {
+      "name": "pickerability_HelloWorld",
+      "value": "Hello World"
+    },
+    {
+      "name": "entry_pickerAbility",
+      "value": "entry_pickerAbility"
+    },
+    {
+      "name": "healthdataability_description",
+      "value": "hap sample empty service"
+    },
+    {
+      "name": "bluetoothservice_description",
+      "value": "hap sample empty service"
+    },
+    {
+      "name": "testservice_description",
+      "value": "hap sample empty service"
+    },
+    {
+      "name": "httpservice_description",
+      "value": "hap sample empty service"
+    },
+    {
+      "name": "alertservice_description",
+      "value": "hap sample empty service"
+    },
+    {
+      "name": "customcardabilityslice_description",
+      "value": "hap sample empty service"
+    },
+    {
+      "name": "customcardserviceability_description",
+      "value": "hap sample empty service"
+    }
+  ]
+}

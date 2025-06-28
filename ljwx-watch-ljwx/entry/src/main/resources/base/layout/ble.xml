@@ -1,0 +1,23 @@
+<!-- res/layout/ble_ability.xml -->
+<DirectionalLayout
+    xmlns:ohos="http://schemas.huawei.com/res/ohos"
+    ohos:orientation="vertical"
+    ohos:width="match_parent"
+    ohos:height="match_parent"
+    ohos:padding="16vp">
+
+    <Picker
+        ohos:id="$+id:test_picker"
+        ohos:height="match_content"
+        ohos:width="300vp"
+        ohos:background_element="#E1FFFF"
+        ohos:layout_alignment="horizontal_center"
+        ohos:normal_text_size="16fp"
+        ohos:normal_text_color="#FFA500"
+        ohos:selected_text_size="16fp"
+        ohos:selected_text_color="#00FFFF"/>
+
+
+
+
+</DirectionalLayout>

@@ -1,0 +1,84 @@
+{
+  "string": [
+    {
+      "name": "entry_MainAbility",
+      "value": "灵境万象"
+    },
+    {
+      "name": "mainability_description",
+      "value": "灵境万象"
+    },
+    {
+      "name": "mainability_HelloWorld",
+      "value": "你好，世界"
+    },
+    {
+      "name": "bluetoothability_description",
+      "value": "蓝牙"
+    },
+    {
+      "name": "bluetoothability_HelloWorld",
+      "value": "灵境万象"
+    },
+    {
+      "name": "entry_bluetoothAbility",
+      "value": "灵境万象"
+    },
+    {
+      "name": "btability_description",
+      "value": "蓝牙"
+    },
+    {
+      "name": "btability_HelloWorld",
+      "value": "灵境万象"
+    },
+    {
+      "name": "entry_btAbility",
+      "value": "蓝牙"
+    },
+    {
+      "name": "serviceability_description",
+      "value": "服务"
+    },
+    {
+      "name": "pickerability_description",
+      "value": "选择器"
+    },
+    {
+      "name": "pickerability_HelloWorld",
+      "value": "你好，世界"
+    },
+    {
+      "name": "entry_pickerAbility",
+      "value": "entry_pickerAbility"
+    },
+    {
+      "name": "healthdataability_description",
+      "value": "健康数据服务"
+    },
+    {
+      "name": "bluetoothservice_description",
+      "value": "蓝牙服务"
+    },
+    {
+      "name": "testservice_description",
+      "value": "测试服务"
+    },
+    {
+      "name": "httpservice_description",
+      "value": "http服务"
+    },
+    {
+      "name": "alertservice_description",
+      "value": "告警服务"
+    },
+    {
+      "name": "customcardabilityslice_description",
+      "value": "hap sample empty service"
+    },
+    {
+      "name": "customcardserviceability_description",
+      "value": "hap sample empty service"
+    }
+  ]
+}

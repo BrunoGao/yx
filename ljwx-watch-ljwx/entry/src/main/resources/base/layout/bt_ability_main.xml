@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<DirectionalLayout
+    xmlns:ohos="http://schemas.huawei.com/res/ohos"
+    ohos:height="match_parent"
+    ohos:width="match_parent"
+    ohos:background_element="#000000">
+
+    <com.hg.watch.custom.BTCircularDashboard
+        ohos:id="$+id:custom_bt_dashboard"
+        ohos:height="match_content"
+        ohos:width="match_content"/>
+</DirectionalLayout>

@@ -1,0 +1,128 @@
+{
+  "app": {
+    "bundleName": "com.hg.watch",
+    "vendor": "ljwx-tech",
+    "version": {
+      "code": 1000060,
+      "name": "1.0.6"
+    }
+  },
+  "deviceConfig": {
+    "default": {
+      "network": {
+        "cleartextTraffic": true
+      }
+    }
+  },
+  "module": {
+    "package": "com.hg.watch",
+    "name": ".MyApplication",
+    "mainAbility": "com.hg.watch.MainAbility",
+    "deviceType": [
+      "wearable"
+    ],
+    "distro": {
+      "deliveryWithInstall": true,
+      "moduleName": "entry",
+      "moduleType": "entry",
+      "installationFree": false
+    },
+    "abilities": [
+      {
+        "skills": [
+          {
+            "entities": [
+              "entity.system.home"
+            ],
+            "actions": [
+              "action.system.home"
+            ]
+          }
+        ],
+        "name": "com.hg.watch.MainAbility",
+        "description": "$string:mainability_description",
+        "icon": "$media:icon",
+        "label": "$string:entry_MainAbility",
+        "launchType": "standard",
+        "orientation": "unspecified",
+        "visible": true,
+        "type": "page"
+      },
+      {
+        "name": "com.hg.watch.HealthDataService",
+        "description": "$string:healthdataability_description",
+        "type": "service",
+        "icon": "$media:icon",
+        "visible": true,
+        "skills": [
+          {
+            "actions": [
+              "com.tdtech.ohos.action.WEAR_STATUS_CHANGE",
+              "com.tdtech.ohos.health.action.HEARTRATE_HIGH_ALERT",
+              "com.tdtech.ohos.health.action.HEARTRATE_LOW_ALERT",
+              "com.tdtech.ohos.health.action.SPO2_LOW_ALERT",
+              "com.tdtech.ohos.health.action.STRESS_HIGH_ALERT",
+              "com.tdtech.ohos.health.action.FALLDOWN_EVENT",
+              "com.tdtech.ohos.action.FUN_DOUBLE_CLICK",
+              "com.tdtech.ohos.action.UI_SETTINGS_CHANGED",
+              "com.tdtech.ohos.health.action.TEMPERATURE_HIGH_ALERT",
+              "com.tdtech.ohos.health.action.TEMPERATURE_LOW_ALERT",
+              "com.tdtech.ohos.action.ONE_KEY_ALARM",
+              "com.tdtech.ohos.action.BOOT_COMPLETED",
+              "com.tdtech.ohos.action.CALL_STATE",
+              "com.tdtech.ohos.health.action.SOS_EVENT"
+            ]
+          }
+        ],
+        "backgroundModes": [
+          "dataTransfer"
+        ]
+      },
+      {
+        "name": "com.hg.watch.BluetoothService",
+        "description": "$string:bluetoothservice_description",
+        "type": "service",
+        "backgroundModes": [
+          "dataTransfer",
+          "bluetoothInteraction"
+        ],
+        "icon": "$media:icon"
+      },
+      {
+        "name": "com.hg.watch.HttpService",
+        "description": "$string:httpservice_description",
+        "type": "service",
+        "backgroundModes": [
+          "dataTransfer"
+        ],
+        "icon": "$media:icon"
+      }
+    ],
+    "reqPermissions": [
+      {
+        "name": "ohos.permission.LOCATION"
+      },
+      {
+        "name": "ohos.permission.LOCATION_IN_BACKGROUND"
+      },
+      {
+        "name": "ohos.permission.USE_BLUETOOTH"
+      },
+      {
+        "name": "ohos.permission.DISCOVER_BLUETOOTH"
+      },
+      {
+        "name": "android.permission.VIBRATE"
+      },
+      {
+        "name": "ohos.permission.INTERNET"
+      },
+      {
+        "name": "com.huawei.permission.SECURITY_DIAGNOSE"
+      },
+      {
+        "name": "com.huawei.permission.KEEP_BACKGROUND_RUNNING"
+      }
+    ]
+  }
+}

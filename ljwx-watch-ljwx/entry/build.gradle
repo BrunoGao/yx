@@ -1,0 +1,51 @@
+apply plugin: 'com.huawei.ohos.hap'
+apply plugin: 'com.huawei.ohos.decctest'
+//For instructions on signature configuration, see https://developer.harmonyos.com/cn/docs/documentation/doc-guides-V3/ide_debug_device-0000001053822404-V3#section1112183053510
+ohos {
+    signingConfigs {
+        debug {
+            storeFile file('C:\\Users\\bg\\.ohos\\config\\auto_debug_ljwx-watch-ljwx_com.hg.watch_260086000101910035.p12')
+            storePassword '0000001B9F54B039AD1B43DC9CF48F36F537584E77ED101ED6909DF8707A692B4BB26B352F377145B6A4E3'
+            keyAlias = 'debugKey'
+            keyPassword '0000001BE02B4BE3A2C25E6FB6B77BC2D18BB1ED167CA8D19C6F613E9ACADFEA18E0B232612BF782E040A5'
+            signAlg = 'SHA256withECDSA'
+            profile file('C:\\Users\\bg\\.ohos\\config\\auto_debug_ljwx-watch-ljwx_com.hg.watch_260086000101910035.p7b')
+            certpath file('C:\\Users\\bg\\.ohos\\config\\auto_debug_ljwx-watch-ljwx_com.hg.watch_260086000101910035.cer')
+        }
+        release {
+            storeFile file('Z:\\Downloads\\heguang\\ljwx-watch-release.p12')
+            storePassword '00000018B77C1C0EA2EBDCF7486314EDCB8E80B5CC8248811ABC72C15130C93CEE940FAF9EBA4107'
+            keyAlias = 'ljwx-release'
+            keyPassword '0000001857F9AA225FF0EE4590EDA0885F8229797FB864E2C6030E7CC6EB95B0D9AB054E7F3B3F6A'
+            signAlg = 'SHA256withECDSA'
+            profile file('Z:\\Downloads\\heguang\\ljwx-watch-releaseRelease.p7b')
+            certpath file('Z:\\Downloads\\heguang\\ljwx-watch-release.cer')
+        }
+    }
+    compileSdkVersion 6
+    defaultConfig {
+        compatibleSdkVersion 6
+    }
+    buildTypes {
+        release {
+            proguardOpt {
+                proguardEnabled false
+                rulesFiles 'proguard-rules.pro'
+            }
+        }
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar', '*.har'])
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation 'com.google.code.gson:gson:2.8.5'
+    testImplementation 'junit:junit:4.13.1'
+    ohosTestImplementation 'com.huawei.ohos.testkit:runner:2.0.0.400'
+    compileOnly files('libs/tdhealth_kit_java_48.jar')
+    compileOnly files('libs/tdmdm_kit_java_SP46.jar')
+    implementation 'org.json:json:20210307'
+}
+decc {
+    supportType = ['html', 'xml']
+}
