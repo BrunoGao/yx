@@ -7,3 +7,6 @@
 [submodule "ljwx-boot"]
 	path = ljwx-boot
 	url = http://192.168.1.83:3000/admin/ljwx-boot.git
+[submodule "ljwx-boot-starter"]
+	path = ljwx-boot-starter
+	url = http://192.168.1.83:3000/admin/ljwx-boot-starter.git
