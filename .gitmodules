@@ -1,3 +1,6 @@
 [submodule "ljwx-admin"]
 	path = ljwx-admin
 	url = http://192.168.1.83:3000/admin/ljwx-admin.git
+[submodule "ljwx-bigscreen"]
+	path = ljwx-bigscreen
+	url = http://192.168.1.83:3000/admin/ljwx-bigscreen.git
