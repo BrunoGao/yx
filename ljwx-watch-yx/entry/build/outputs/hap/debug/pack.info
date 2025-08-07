@@ -1,0 +1,57 @@
+{
+    "summary": {
+        "app": {
+            "bundleName": "com.ljwx.watch",
+            "version": {
+                "code": 1000060,
+                "name": "1.0.6"
+            }
+        },
+        "modules": [
+            {
+                "mainAbility": "com.ljwx.watch.MainAbility",
+                "deviceType": [
+                    "wearable"
+                ],
+                "abilities": [
+                    {
+                        "visible": true,
+                        "name": "com.ljwx.watch.MainAbility",
+                        "label": "$string:entry_MainAbility"
+                    },
+                    {
+                        "visible": true,
+                        "name": "com.ljwx.watch.HealthDataService"
+                    },
+                    {
+                        "name": "com.ljwx.watch.BluetoothService"
+                    },
+                    {
+                        "name": "com.ljwx.watch.HttpService"
+                    }
+                ],
+                "distro": {
+                    "moduleType": "entry",
+                    "installationFree": false,
+                    "deliveryWithInstall": true,
+                    "moduleName": "entry"
+                },
+                "apiVersion": {
+                    "compatible": 6,
+                    "releaseType": "Release",
+                    "target": 6
+                }
+            }
+        ]
+    },
+    "packages": [
+        {
+            "deviceType": [
+                "wearable"
+            ],
+            "moduleType": "entry",
+            "deliveryWithInstall": true,
+            "name": "entry-debug-rich-unsigned"
+        }
+    ]
+}

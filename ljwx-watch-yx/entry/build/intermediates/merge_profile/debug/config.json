@@ -1,0 +1,137 @@
+{
+    "app": {
+        "bundleName": "com.ljwx.watch",
+        "vendor": "ljwx-tech",
+        "apiVersion": {
+            "compatible": 6,
+            "target": 6,
+            "releaseType": "Release"
+        },
+        "version": {
+            "code": 1000060,
+            "name": "1.0.6"
+        }
+    },
+    "deviceConfig": {
+        "default": {
+            "network": {
+                "cleartextTraffic": true
+            }
+        }
+    },
+    "module": {
+        "name": ".MyApplication",
+        "deviceType": [
+            "wearable"
+        ],
+        "distro": {
+            "deliveryWithInstall": true,
+            "moduleName": "entry",
+            "moduleType": "entry",
+            "installationFree": false
+        },
+        "abilities": [
+            {
+                "name": "com.ljwx.watch.MainAbility",
+                "description": "$string:mainability_description",
+                "icon": "$media:icon",
+                "label": "$string:entry_MainAbility",
+                "type": "page",
+                "launchType": "standard",
+                "orientation": "unspecified",
+                "visible": true,
+                "skills": [
+                    {
+                        "actions": [
+                            "action.system.home"
+                        ],
+                        "entities": [
+                            "entity.system.home"
+                        ]
+                    }
+                ],
+                "homeAbility": true
+            },
+            {
+                "name": "com.ljwx.watch.HealthDataService",
+                "description": "$string:healthdataability_description",
+                "icon": "$media:icon",
+                "type": "service",
+                "visible": true,
+                "skills": [
+                    {
+                        "actions": [
+                            "com.tdtech.ohos.action.WEAR_STATUS_CHANGE",
+                            "com.tdtech.ohos.health.action.HEARTRATE_HIGH_ALERT",
+                            "com.tdtech.ohos.health.action.HEARTRATE_LOW_ALERT",
+                            "com.tdtech.ohos.health.action.SPO2_LOW_ALERT",
+                            "com.tdtech.ohos.health.action.STRESS_HIGH_ALERT",
+                            "com.tdtech.ohos.health.action.FALLDOWN_EVENT",
+                            "com.tdtech.ohos.action.FUN_DOUBLE_CLICK",
+                            "com.tdtech.ohos.action.UI_SETTINGS_CHANGED",
+                            "com.tdtech.ohos.health.action.TEMPERATURE_HIGH_ALERT",
+                            "com.tdtech.ohos.health.action.TEMPERATURE_LOW_ALERT",
+                            "com.tdtech.ohos.action.ONE_KEY_ALARM",
+                            "com.tdtech.ohos.action.BOOT_COMPLETED",
+                            "com.tdtech.ohos.action.CALL_STATE",
+                            "com.tdtech.ohos.health.action.SOS_EVENT"
+                        ]
+                    }
+                ],
+                "backgroundModes": [
+                    "dataTransfer"
+                ],
+                "homeAbility": false
+            },
+            {
+                "name": "com.ljwx.watch.BluetoothService",
+                "description": "$string:bluetoothservice_description",
+                "icon": "$media:icon",
+                "type": "service",
+                "backgroundModes": [
+                    "dataTransfer",
+                    "bluetoothInteraction"
+                ],
+                "homeAbility": false
+            },
+            {
+                "name": "com.ljwx.watch.HttpService",
+                "description": "$string:httpservice_description",
+                "icon": "$media:icon",
+                "type": "service",
+                "backgroundModes": [
+                    "dataTransfer"
+                ],
+                "homeAbility": false
+            }
+        ],
+        "reqPermissions": [
+            {
+                "name": "ohos.permission.LOCATION"
+            },
+            {
+                "name": "ohos.permission.LOCATION_IN_BACKGROUND"
+            },
+            {
+                "name": "ohos.permission.USE_BLUETOOTH"
+            },
+            {
+                "name": "ohos.permission.DISCOVER_BLUETOOTH"
+            },
+            {
+                "name": "android.permission.VIBRATE"
+            },
+            {
+                "name": "ohos.permission.INTERNET"
+            },
+            {
+                "name": "com.huawei.permission.SECURITY_DIAGNOSE"
+            },
+            {
+                "name": "com.huawei.permission.KEEP_BACKGROUND_RUNNING"
+            }
+        ],
+        "mainAbility": "com.ljwx.watch.MainAbility",
+        "package": "com.ljwx.watch"
+    }
+}

@@ -1,0 +1,32 @@
+FROM redis:7-alpine
+
+# 设置默认环境变量
+ENV REDIS_PASSWORD=123456
+ENV REDIS_PORT=6379
+ENV REDIS_MAXMEMORY=512mb
+ENV REDIS_MAXMEMORY_POLICY=allkeys-lru
+
+# 安装envsubst工具用于环境变量替换
+RUN apk add --no-cache gettext
+
+# 复制Redis配置模板
+COPY docker/redis/redis.conf.template /usr/local/etc/redis/redis.conf.template
+
+# 创建数据和日志目录并设置权限
+RUN mkdir -p /data /var/log/redis /backup && \
+    chown -R redis:redis /data /var/log/redis /backup && \
+    chmod 755 /data /var/log/redis /backup
+
+# 确保redis用户权限正确
+RUN chown -R redis:redis /data /var/log/redis /backup
+
+# 复制启动脚本
+COPY docker/redis/docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# 暴露端口
+EXPOSE 6379
+
+# 使用启动脚本
+ENTRYPOINT ["/usr/local/bin/docker-entrypoint.sh"]
+CMD ["redis-server"] 

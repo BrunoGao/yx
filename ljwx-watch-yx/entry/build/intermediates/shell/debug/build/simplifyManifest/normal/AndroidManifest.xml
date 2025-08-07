@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.ljwx.watch" android:versionCode="1000060" android:versionName="1.0.6">  
+  <uses-feature android:name="zidane.software.ability" android:required="false"/>  
+  <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="29"/>  
+  <uses-permission android:name="ohos.permission.LOCATION"/>  
+  <uses-permission android:name="ohos.permission.LOCATION_IN_BACKGROUND"/>  
+  <uses-permission android:name="ohos.permission.USE_BLUETOOTH"/>  
+  <uses-permission android:name="ohos.permission.DISCOVER_BLUETOOTH"/>  
+  <uses-permission android:name="android.permission.VIBRATE"/>  
+  <uses-permission android:name="ohos.permission.INTERNET"/>  
+  <uses-permission android:name="com.huawei.permission.SECURITY_DIAGNOSE"/>  
+  <uses-permission android:name="com.huawei.permission.KEEP_BACKGROUND_RUNNING"/>  
+  <application android:usesCleartextTraffic="true" android:icon="@drawable/icon" android:directBootAware="false" android:allowBackup="false" android:label="@string/entry_MainAbility" android:name="com.ljwx.watch.ShellMyApplication" android:persistent="false" android:debuggable="true"> 
+    <meta-data android:value="true" android:name="permZA"/> 
+  </application> 
+</manifest>

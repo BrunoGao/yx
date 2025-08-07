@@ -1,0 +1,24 @@
+# 排除不必要的文件以优化构建
+.git/
+.gitignore
+README.md
+*.md
+ljwx-admin/
+ljwx-bigscreen/
+ljwx-boot/
+ljwx-boot-starter/
+client-deployment/
+custom-assets/
+utils/
+*.sh
+!build-mysql.sh
+*.yml
+!docker-compose.yml
+*.env
+*.tar.gz
+*.log
+.DS_Store
+node_modules/
+target/
+*.class
+*.jar 

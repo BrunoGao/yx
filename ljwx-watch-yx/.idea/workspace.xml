@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="0300bd12-9e6d-4d27-aebc-5d045da39232" name="Changes" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ExternalProjectsData">
+    <projectState path="$PROJECT_DIR$">
+      <ProjectState />
+    </projectState>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$/.." />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="2yobwSh0w8D2XPaiAxUVFUwp1Vf" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;auto_debug_bundleName&quot;: &quot;0000001E130169C0D750605B8F52F75688A4EB007564405D116C20461562E5B810FA286B18C2F83D9B00611A97A5&quot;,
+    &quot;auto_debug_cert_list&quot;: &quot;0000002303035849344BA803F103F89711B6F472DF58C42AEFA87BAED9E422DBBCF4E7DBF13206028DA4D7A94AC28B8D2DD4B7&quot;,
+    &quot;auto_debug_device_list&quot;: &quot;00000253163A4EA8D21BB37F0D2BFE2B1B22FAC3F3329DB341547AEFAF111F344DCD3315A9CA5F306ED225CB85D3C23CB2A5C1438C8AE364E43A77C3749BD433E47CA0E6FD7BA083E8FB640A08371D7CD0469E7127FD44F999858E3D867D4D13A46FB53AA5BDA8E748B4D106034785872C4492551F54829E02F7EFBBC40A71BFA7C2DE5BAF08094851F95C44B2A3B24CDB5A68285949DBB9DA8DA3512D2AB92B0BD5E35AC1E6DC29407C44DEAEA982B435E22F2238AB05166FD1E732D3B577F732CBC6744A9731618D3D4660C20B68706716E61F4FF1C804CF282548703AA1FBB68BD4A5706AB662A1E66903D661CD13A51130C02E9B893857082D74159221F52A56CF1B301777C7204FA883A012EF9506E9D17458385D964753C36A81E75DFCE950474462D5D26C61ACED72FB05504E7EECBC7BB08313756C38A0C0816D95118A183B7DD2E827737C591EB70ECBA4FC5D5EDE060B728613417B8596A0C099C46E479C2FD9F12A4449FB240F7C34E386BE2462C04B96723CCFD224C27C29484FCA24DE2A23149B1D6311330B761A60BA9F0453B18B6FE56B9A6A5FF17F5EB633E3ED23CC5148640DB3E009820584ABE8473C8F84497F71DAB543AA11F7041A071FA5FD8797B33C28DE6A444A14C10F0531BBEAA0D8AF17B989068B2F48EFB644613D9431340D8C771683E3604EB383654C79332E6A73CBF3FA6CDA983296AE9D306CEA0F1F09E27734495B7AE2DF45ECE636E4DD31E728D2FE9445E43B5D764FD96609306D3A6E2FA1C606C62E176C60DEF746A119A35A9AE9EAA85B889DED4D6AD8C926F09C505A8829F6FE3E0ADBB02DCC4AC6632AF765F1DB75D96908370D988603&quot;,
+    &quot;auto_debug_package_name&quot;: &quot;0000001E1CBF3EE37233E0B635A810ACBD3463D219E56DC7DFA3D7E6F097B78655126DE8AFF14BC942AC38DA66FA&quot;,
+    &quot;auto_debug_team_id&quot;: &quot;000000229D2B44D80978BBC0C495B43E0BF8C7182E0486D367972FE344548FE400FAB445F99DD65B2E04BEA862E8F91494E1&quot;,
+    &quot;last_opened_file_path&quot;: &quot;Z:/work/codes/springboot/ljwx/docker/ljwx-watch-yx&quot;,
+    &quot;project.ide.version&quot;: &quot;3.1.0.501&quot;,
+    &quot;project.structure.select&quot;: &quot;Modules&quot;
+  }
+}</component>
+  <component name="RunManager" selected="HarmonyOS App.entry">
+    <configuration name="entry" type="HosDebugTask" factoryName="HarmonyOS App" activateToolWindowBeforeRun="false">
+      <module name="entry" />
+      <option name="DEPLOY" value="true" />
+      <option name="DEPLOY_APK_FROM_BUNDLE" value="false" />
+      <option name="DEPLOY_AS_INSTANT" value="false" />
+      <option name="ARTIFACT_NAME" value="" />
+      <option name="PM_INSTALL_OPTIONS" value="" />
+      <option name="DYNAMIC_FEATURES_DISABLED_LIST" value="" />
+      <option name="ACTIVITY_EXTRA_FLAGS" value="" />
+      <option name="MODE" value="default_activity" />
+      <option name="CLEAR_LOGCAT" value="false" />
+      <option name="SHOW_LOGCAT_AUTOMATICALLY" value="false" />
+      <option name="SKIP_NOOP_APK_INSTALLATIONS" value="true" />
+      <option name="FORCE_STOP_RUNNING_APP" value="true" />
+      <option name="TARGET_SELECTION_MODE" value="SHOW_DIALOG" />
+      <option name="DEBUGGER_TYPE" value="Auto" />
+      <Auto />
+      <Dual />
+      <DualJs />
+      <Java />
+      <Js />
+      <Native />
+      <Profilers>
+        <option name="ADVANCED_PROFILING_ENABLED" value="false" />
+        <option name="STARTUP_CPU_PROFILING_ENABLED" value="false" />
+        <option name="STARTUP_CPU_PROFILING_CONFIGURATION_NAME" value="Sample Java Methods" />
+      </Profilers>
+      <option name="DEEP_LINK" value="" />
+      <option name="ACTIVITY_CLASS" value="" />
+      <DEPLOY_MULTI_HAP>false</DEPLOY_MULTI_HAP>
+      <REINSTALL_APPLICATION>false</REINSTALL_APPLICATION>
+      <method v="2">
+        <option name="Build.Gradle.BeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Super App" type="HosSuperAppDebugTask" factoryName="HarmonyOS Super App">
+      <method v="2">
+        <option name="Build.Gradle.BeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+</project>

@@ -1,0 +1,76 @@
+# 排除不需要提交的目录和文件
+
+# 临时和日志文件
+*.log
+*.tmp
+*.cache
+.DS_Store
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.log
+.git
+.mypy_cache
+.pytest_cache
+.hypothesis
+
+# 不需要的项目目录
+app/
+backup/
+ljwx-bigscreen-703/
+ljwx-bigscreen-new/
+ljwx-watch-ljwx/
+instance/
+local/
+logs/
+
+# 临时文件
+bigscreen.log
+org.log  
+system.log
+requirements.txt
+run.py
+data.sql*
+buildx-config.toml
+maven-settings.xml
+monitoring-versions.env
+
+# 测试文件
+test*.py
+test*.html
+test*.sql
+test*.sh
+check_*.py
+debug_*.py
+enhanced_*.py
+manual_*.py
+validate_*.py
+
+# 其他文件
+LOCAL_REGISTRY_SETUP.md
+README.md
+
+# 需要保留的目录（显式包含）
+!ljwx-admin/
+!ljwx-boot/
+!ljwx-boot-starter/
+!ljwx-watch-yx/
+!ljwx-bigscreen/
+!deploy-client/
+!utils/
+!docker/
+!.github/

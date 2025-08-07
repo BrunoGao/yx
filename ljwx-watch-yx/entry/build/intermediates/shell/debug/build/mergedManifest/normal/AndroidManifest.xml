@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?><manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.ljwx.watch" android:versionCode="1000060" android:versionName="1.0.6">
+    
+  <uses-feature android:name="zidane.software.ability" android:required="false"/>
+    
+  <uses-sdk android:minSdkVersion="26" android:targetSdkVersion="29"/>
+    
+  <uses-permission android:name="ohos.permission.LOCATION"/>
+    
+  <uses-permission android:name="ohos.permission.LOCATION_IN_BACKGROUND"/>
+    
+  <uses-permission android:name="ohos.permission.USE_BLUETOOTH"/>
+    
+  <uses-permission android:name="ohos.permission.DISCOVER_BLUETOOTH"/>
+    
+  <uses-permission android:name="android.permission.VIBRATE"/>
+    
+  <uses-permission android:name="ohos.permission.INTERNET"/>
+    
+  <uses-permission android:name="com.huawei.permission.SECURITY_DIAGNOSE"/>
+    
+  <uses-permission android:name="com.huawei.permission.KEEP_BACKGROUND_RUNNING"/>
+    
+  <application android:usesCleartextTraffic="true" android:icon="@drawable/icon" android:directBootAware="false" android:allowBackup="false" android:label="@string/entry_MainAbility" android:name="com.ljwx.watch.ShellMyApplication" android:persistent="false" android:debuggable="true">
+        
+    <meta-data android:value="true" android:name="permZA"/>
+        
+    <activity android:icon="@drawable/icon" android:label="@string/entry_MainAbility" android:screenOrientation="unspecified" android:name="com.ljwx.watch.MainAbilityShellActivity" android:launchMode="standard" android:exported="true">
+            
+      <intent-filter>
+                
+        <action android:name="android.intent.action.MAIN"/>
+                
+        <category android:name="android.intent.category.LAUNCHER"/>
+              
+      </intent-filter>
+          
+    </activity>
+        
+    <service android:icon="@drawable/icon" android:description="@string/healthdataability_description" android:foregroundServiceType="dataSync" android:name="com.ljwx.watch.HealthDataServiceShellService" android:exported="true">
+            
+      <intent-filter>
+                
+        <action android:name="com.tdtech.ohos.action.WEAR_STATUS_CHANGE"/>
+                
+        <action android:name="com.tdtech.ohos.health.action.HEARTRATE_HIGH_ALERT"/>
+                
+        <action android:name="com.tdtech.ohos.health.action.HEARTRATE_LOW_ALERT"/>
+                
+        <action android:name="com.tdtech.ohos.health.action.SPO2_LOW_ALERT"/>
+                
+        <action android:name="com.tdtech.ohos.health.action.STRESS_HIGH_ALERT"/>
+                
+        <action android:name="com.tdtech.ohos.health.action.FALLDOWN_EVENT"/>
+                
+        <action android:name="com.tdtech.ohos.action.FUN_DOUBLE_CLICK"/>
+                
+        <action android:name="com.tdtech.ohos.action.UI_SETTINGS_CHANGED"/>
+                
+        <action android:name="com.tdtech.ohos.health.action.TEMPERATURE_HIGH_ALERT"/>
+                
+        <action android:name="com.tdtech.ohos.health.action.TEMPERATURE_LOW_ALERT"/>
+                
+        <action android:name="com.tdtech.ohos.action.ONE_KEY_ALARM"/>
+                
+        <action android:name="com.tdtech.ohos.action.BOOT_COMPLETED"/>
+                
+        <action android:name="com.tdtech.ohos.action.CALL_STATE"/>
+                
+        <action android:name="com.tdtech.ohos.health.action.SOS_EVENT"/>
+              
+      </intent-filter>
+          
+    </service>
+        
+    <service android:icon="@drawable/icon" android:description="@string/bluetoothservice_description" android:foregroundServiceType="connectedDevice|dataSync" android:name="com.ljwx.watch.BluetoothServiceShellService"/>
+        
+    <service android:icon="@drawable/icon" android:description="@string/httpservice_description" android:foregroundServiceType="dataSync" android:name="com.ljwx.watch.HttpServiceShellService"/>
+      
+  </application>
+  
+</manifest>

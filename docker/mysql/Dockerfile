@@ -1,0 +1,46 @@
+# 使用官方MySQL镜像，通过Docker镜像加速器拉取
+FROM mysql:8.0
+
+# 设置环境变量
+ENV MYSQL_ROOT_PASSWORD=123456
+ENV MYSQL_DATABASE=lj-06
+ENV MYSQL_CHARACTER_SET_SERVER=utf8mb4
+ENV MYSQL_COLLATION_SERVER=utf8mb4_unicode_ci
+
+# 复制智能导入脚本（最高优先级）
+COPY docker/mysql/smart-init.sh /docker-entrypoint-initdb.d/00-smart-init.sh
+RUN chmod +x /docker-entrypoint-initdb.d/00-smart-init.sh
+
+# 复制内置数据（优先级低）
+COPY data.sql /docker-entrypoint-initdb.d/01-builtin-data.sql
+# COPY insert_admin.sql /docker-entrypoint-initdb.d/02-builtin-admin.sql # 已删除，避免重复admin用户
+
+# 设置MySQL配置
+COPY docker/mysql/my.cnf /etc/mysql/conf.d/
+
+# 创建日志目录并设置权限
+RUN mkdir -p /var/log/mysql && chown mysql:mysql /var/log/mysql
+
+# 创建客户端数据目录（优先级高）
+RUN mkdir -p /docker-entrypoint-initdb.d/client
+
+# 修复权限问题：确保数据目录可写
+RUN mkdir -p /var/lib/mysql /var/log/mysql /backup && \
+    chown -R mysql:mysql /var/lib/mysql /var/log/mysql /backup && \
+    chmod 755 /var/lib/mysql /var/log/mysql /backup
+
+# 确保mysql用户存在并设置正确的UID/GID
+RUN id mysql || (groupadd -r mysql && useradd -r -g mysql mysql) && \
+    usermod -u 999 mysql 2>/dev/null || true && \
+    groupmod -g 999 mysql 2>/dev/null || true
+
+# 复制权限修复入口脚本
+COPY docker/mysql/fix-permissions-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/fix-permissions-entrypoint.sh
+
+# 暴露端口
+EXPOSE 3306
+
+# 使用权限修复入口脚本
+ENTRYPOINT ["/usr/local/bin/fix-permissions-entrypoint.sh"]
+CMD ["mysqld", "--default-authentication-plugin=mysql_native_password"] 

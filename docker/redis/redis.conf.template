@@ -1,0 +1,56 @@
+# Redis定制化配置文件模板
+
+# 网络配置
+bind 0.0.0.0
+port ${REDIS_PORT}
+protected-mode no
+
+# 认证配置
+requirepass ${REDIS_PASSWORD}
+
+# 内存配置
+maxmemory ${REDIS_MAXMEMORY}
+maxmemory-policy ${REDIS_MAXMEMORY_POLICY}
+
+# 持久化配置
+save 900 1
+save 300 10
+save 60 10000
+rdbcompression yes
+rdbchecksum yes
+dbfilename dump.rdb
+dir /data
+
+# AOF配置
+appendonly yes
+appendfilename "appendonly.aof"
+appendfsync everysec
+no-appendfsync-on-rewrite no
+auto-aof-rewrite-percentage 100
+auto-aof-rewrite-min-size 64mb
+
+# 日志配置
+loglevel notice
+logfile /var/log/redis/redis.log
+
+# 性能优化
+tcp-keepalive 300
+timeout 0
+tcp-backlog 511
+databases 16
+
+# 客户端配置
+maxclients 10000
+
+# 慢查询日志
+slowlog-log-slower-than 10000
+slowlog-max-len 128
+
+# 键空间通知
+notify-keyspace-events ""
+
+# 安全配置
+rename-command FLUSHDB ""
+rename-command FLUSHALL ""
+rename-command KEYS ""
+rename-command CONFIG "CONFIG_9f2a8b3c4d5e6f7a" 

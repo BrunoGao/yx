@@ -1,0 +1,5 @@
+-- 创建ljwx用户并授予权限
+CREATE USER IF NOT EXISTS 'ljwx'@'%' IDENTIFIED BY 'ljwx_123456';
+GRANT ALL PRIVILEGES ON `lj-06`.* TO 'ljwx'@'%';
+GRANT ALL PRIVILEGES ON `lj-05`.* TO 'ljwx'@'%';
+FLUSH PRIVILEGES; 
