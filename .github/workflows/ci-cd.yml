@@ -1,0 +1,162 @@
+name: Build and Deploy Docker Images
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - 'v*'
+  pull_request:
+    branches:
+      - main
+      - master
+
+env:
+  REGISTRY_HOST: crpi-yilnm6upy4pmbp67.cn-shenzhen.personal.cr.aliyuncs.com
+  REGISTRY_NAMESPACE: ljwx
+  LJWX_VERSION: 1.3.1
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - name: mysql
+            dockerfile: docker/mysql/Dockerfile
+            context: .
+          - name: redis
+            dockerfile: docker/redis/Dockerfile
+            context: .
+          - name: boot
+            dockerfile: ljwx-boot/ljwx-boot-admin/Dockerfile.prod
+            context: .
+          - name: bigscreen
+            dockerfile: Dockerfile.multiarch
+            context: ljwx-bigscreen/bigscreen/
+          - name: admin
+            dockerfile: Dockerfile.prod
+            context: ljwx-admin/
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        submodules: recursive
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Aliyun Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY_HOST }}
+        username: brunogao
+        password: admin123
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY_HOST }}/${{ env.REGISTRY_NAMESPACE }}/ljwx-${{ matrix.service.name }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=raw,value=${{ env.LJWX_VERSION }}
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: ${{ matrix.service.context }}
+        file: ${{ matrix.service.dockerfile }}
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+          VERSION=${{ env.LJWX_VERSION }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Export MySQL data (for mysql service only)
+      if: matrix.service.name == 'mysql'
+      run: |
+        # MySQL导出逻辑将在构建时处理
+        echo "MySQL service build completed with data export"
+
+  monitoring-stack:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - name: grafana
+            dockerfile: docker/grafana/Dockerfile
+          - name: prometheus
+            dockerfile: docker/prometheus/Dockerfile
+          - name: loki
+            dockerfile: docker/loki/Dockerfile
+          - name: promtail
+            dockerfile: docker/promtail/Dockerfile
+          - name: alertmanager
+            dockerfile: docker/alertmanager/Dockerfile
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Aliyun Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY_HOST }}
+        username: brunogao
+        password: admin123
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY_HOST }}/${{ env.REGISTRY_NAMESPACE }}/ljwx-${{ matrix.service.name }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=raw,value=${{ env.LJWX_VERSION }}
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push monitoring image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ${{ matrix.service.dockerfile }}
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        build-args: |
+          BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+          VERSION=${{ env.LJWX_VERSION }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+  notify:
+    runs-on: ubuntu-latest
+    needs: [build, monitoring-stack]
+    if: always()
+    steps:
+    - name: Notification
+      run: |
+        echo "🎉 Docker 镜像构建完成!"
+        echo "📊 构建状态:"
+        echo "  - 应用镜像: ${{ needs.build.result }}"
+        echo "  - 监控镜像: ${{ needs.monitoring-stack.result }}"
+        echo "🚀 镜像版本: ${{ env.LJWX_VERSION }}"
+        echo "🏷️  镜像地址: ${{ env.REGISTRY_HOST }}/${{ env.REGISTRY_NAMESPACE }}/ljwx-*:${{ env.LJWX_VERSION }}"
