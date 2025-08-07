@@ -135,3 +135,49 @@ docker-compose up -d     # 滚动更新服务
 1. 日志输出：`docker-compose logs [service_name]`
 2. 服务状态：`docker-compose ps`  
 3. 网络连通：`docker-compose exec ljwx-boot curl mysql:3306` 
+
+# 健康大屏 Flask 新架构
+
+## 目录结构
+
+```
+app/
+  blueprints/
+    api/         # API蓝图
+    bigscreen/   # 大屏页面蓝图
+    watch/       # Watch端接口蓝图
+  models/        # 按领域拆分的数据模型
+  services/      # 业务服务层
+  config.py      # 配置文件
+  extensions.py  # 扩展初始化
+  __init__.py    # 应用工厂
+requirements.txt # 依赖
+run.py           # 启动入口
+```
+
+## 安装依赖
+
+```bash
+pip install -r requirements.txt
+```
+
+## 启动方法
+
+```bash
+python run.py
+```
+
+## 兼容说明
+- Watch端五大接口100%兼容原有路径和参数。
+- 大屏页面和API接口全部迁移为标准Flask蓝图，支持模块化维护。
+- 所有配置、变量、常量均集中管理。
+- 支持sqlite和MySQL，默认sqlite。
+
+## 迁移说明
+- 业务逻辑已分层，后续可平滑迁移和扩展。
+- 详细测试脚本见`test_new_architecture.py`。
+
+## 常见问题
+- 缺少依赖请先`pip install -r requirements.txt`
+- 数据库表自动创建，首次启动无需手动建表。
+- 如需自定义配置请编辑`.env`或环境变量。 

@@ -1,0 +1,60 @@
+/* 响应式设计 */
+
+/* 超宽屏适配 */
+@media screen and (min-width: 1920px) {
+  .container {
+    grid-template-columns: 20% 1fr 20%; /* 超宽屏：减少侧边栏宽度，给中间更多空间 */
+  }
+}
+
+/* 中等屏幕适配 */
+@media screen and (max-width: 1600px) {
+  .container {
+    grid-template-columns: 24% 1fr 24%; /* 中等屏幕：稍微增加侧边栏宽度 */
+  }
+}
+
+/* 小屏幕适配 */
+@media screen and (max-width: 1200px) {
+  .container {
+    grid-template-columns: 26% 1fr 26%; /* 小屏幕：进一步增加侧边栏宽度确保内容显示 */
+  }
+}
+
+/* 更小屏幕适配 */
+@media screen and (max-width: 1024px) {
+  .container {
+    grid-template-columns: 28% 1fr 28%; /* 更小屏幕：最大化侧边栏宽度 */
+    grid-gap: 12px; /* 减少间距 */
+  }
+  
+  /* 优化小屏幕下的面板内容 */
+  .panel-header {
+    font-size: 14px;
+    margin-bottom: 8px;
+  }
+  
+  .alert-charts-grid {
+    gap: 4px; /* 进一步减少间距 */
+    min-height: 250px; /* 保持与主屏幕一致的最小高度 */
+  }
+  
+  .chart-container {
+    min-height: 100px;
+  }
+  
+  .side-container:last-child .panel:nth-child(3) .chart-container {
+    min-height: 100px;
+  }
+}
+
+/* 低高度屏幕适配 */
+@media screen and (max-height: 800px) {
+  .personnel-management .overview-item .number {
+    font-size: 18px;
+  }
+  
+  .personnel-management .overview-item .label {
+    font-size: 11px;
+  }
+} 

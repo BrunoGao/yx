@@ -1,0 +1,1800 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>消息中心</title>
+    <script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinycolor/1.4.2/tinycolor.min.js"></script>
+    <!-- 添加 Element UI 的依赖 -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='element-ui/theme-chalk/index.css') }}">
+    <script src="{{ url_for('static', filename='js/vue.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='element-ui/index.js') }}"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: transparent;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* 消息表格容器样式 */
+        .message-table-container {
+            background: rgba(1, 19, 38, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(0, 228, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            max-height: 400px;
+            overflow: hidden; /* 改为hidden，让内部表格容器处理滚动 */
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        .message-table-container h2 {
+            color: #00e4ff;
+            font-size: 20px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(0, 228, 255, 0.5);
+        }
+
+        /* 添加内部滚动容器 */
+        #messageTable {
+            max-height: 300px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            border-radius: 8px;
+        }
+
+        /* 表格基础样式 */
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            font-size: 14px;
+            position: relative;
+        }
+
+        /* 表头样式 */
+        th {
+            background: linear-gradient(180deg, rgba(0, 228, 255, 0.15) 0%, rgba(0, 228, 255, 0.05) 100%);
+            color: #00e4ff;
+            font-weight: 600;
+            padding: 15px;
+            text-align: left;
+            border-bottom: 2px solid rgba(0, 228, 255, 0.2);
+            text-shadow: 0 0 10px rgba(0, 228, 255, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        th:first-child { border-top-left-radius: 8px; }
+        th:last-child { border-top-right-radius: 8px; }
+
+        /* 表格内容样式 */
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(0, 228, 255, 0.1);
+            transition: all 0.3s ease;
+            max-width: 300px; /* 限制最大宽度 */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* 消息内容单元格特殊处理 */
+        td:nth-child(4) {
+            max-width: 400px;
+            white-space: normal;
+            line-height: 1.4;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+        }
+
+        /* 条带效果 */
+        tr:nth-child(even) {
+            background: rgba(0, 228, 255, 0.03);
+        }
+
+        /* 鼠标悬停效果 */
+        tr:hover td {
+            background: rgba(0, 228, 255, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 228, 255, 0.1);
+        }
+
+        /* 消息类型和状态标签 */
+        .message-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .message-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .type-announcement {
+            background: linear-gradient(45deg, rgba(33, 150, 243, 0.2) 0%, rgba(33, 150, 243, 0.4) 100%);
+            color: #2196f3;
+            border: 1px solid rgba(33, 150, 243, 0.3);
+        }
+
+        .type-job {
+            background: linear-gradient(45deg, rgba(156, 39, 176, 0.2) 0%, rgba(156, 39, 176, 0.4) 100%);
+            color: #9c27b0;
+            border: 1px solid rgba(156, 39, 176, 0.3);
+        }
+
+        .type-notification {
+            background: linear-gradient(45deg, rgba(250, 140, 22, 0.2) 0%, rgba(250, 140, 22, 0.4) 100%);
+            color: #fa8c16;
+            border: 1px solid rgba(250, 140, 22, 0.3);
+        }
+
+        .type-task {
+            background: linear-gradient(45deg, rgba(255, 140, 0, 0.2) 0%, rgba(255, 140, 0, 0.4) 100%);
+            color: #ff8c00;
+            border: 1px solid rgba(255, 140, 0, 0.3);
+        }
+
+        .type-warning {
+            background: linear-gradient(45deg, rgba(245, 34, 45, 0.2) 0%, rgba(245, 34, 45, 0.4) 100%);
+            color: #f5222d;
+            border: 1px solid rgba(245, 34, 45, 0.3);
+        }
+
+        /* 消息状态标签样式 */
+        .status-unread {
+            background: linear-gradient(45deg, rgba(245, 34, 45, 0.2) 0%, rgba(245, 34, 45, 0.4) 100%);
+            color: #f5222d;
+            border: 1px solid rgba(245, 34, 45, 0.3);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .status-read {
+            background: linear-gradient(45deg, rgba(82, 196, 26, 0.2) 0%, rgba(82, 196, 26, 0.4) 100%);
+            color: #52c41a;
+            border: 1px solid rgba(82, 196, 26, 0.3);
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        /* 图表网格容器 */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .chart-container {
+            background: rgba(1, 19, 38, 0.8);
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid rgba(0, 228, 255, 0.2);
+            height: 300px;
+        }
+
+        /* 时间分布图横跨两列的容器样式 */
+        .chart-container[style*="grid-column: span 2"] {
+            margin-top: 20px;
+        }
+
+        /* 滚动条美化 */
+        #messageTable::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        #messageTable::-webkit-scrollbar-track {
+            background: rgba(0, 228, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        #messageTable::-webkit-scrollbar-thumb {
+            background: rgba(0, 228, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        #messageTable::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 228, 255, 0.3);
+        }
+
+        /* 移除原来的滚动条样式 */
+        .message-table-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* 发送消息面板样式 */
+        .send-message-panel {
+            background: rgba(1, 19, 38, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(0, 228, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            margin-bottom: 20px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .send-message-panel h3 {
+            color: #00e4ff;
+            font-size: 20px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(0, 228, 255, 0.5);
+        }
+
+        /* 可折叠面板样式 */
+        .collapsible-panel {
+            background: rgba(1, 19, 38, 0.8);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 228, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            margin-bottom: 20px;
+            width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .panel-header {
+            padding: 20px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 228, 255, 0.05);
+            transition: background 0.3s ease;
+        }
+
+        .panel-header:hover {
+            background: rgba(0, 228, 255, 0.1);
+        }
+
+        .panel-header h3 {
+            color: #00e4ff;
+            font-size: 20px;
+            margin: 0;
+            text-shadow: 0 0 10px rgba(0, 228, 255, 0.5);
+        }
+
+        .panel-toggle {
+            color: #00e4ff;
+            font-size: 18px;
+            font-weight: bold;
+            transition: transform 0.3s ease;
+        }
+
+        .panel-toggle.expanded {
+            transform: rotate(180deg);
+        }
+
+        .panel-content {
+            padding: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+
+        .panel-content.expanded {
+            max-height: 1000px; /* 足够大的值以容纳内容 */
+            padding: 20px;
+        }
+
+        /* Element UI 样式覆盖 */
+        .el-tree {
+            background: transparent;
+            color: #fff;
+        }
+
+        .el-tree-node__content {
+            background: transparent !important;
+        }
+
+        .el-tree-node__content:hover {
+            background-color: rgba(0, 228, 255, 0.1) !important;
+        }
+
+        .el-tree-node.is-current > .el-tree-node__content {
+            background-color: rgba(0, 228, 255, 0.2) !important;
+        }
+
+        .el-select {
+            width: 100%;
+        }
+
+        .el-select-dropdown {
+            background: rgba(1, 19, 38, 0.9);
+            border: 1px solid rgba(0, 228, 255, 0.2);
+        }
+
+        .el-select-dropdown__item {
+            color: #fff;
+        }
+
+        .el-select-dropdown__item.hover {
+            background: rgba(0, 228, 255, 0.1);
+        }
+
+        .el-input__inner {
+            background: rgba(0, 228, 255, 0.1);
+            border: 1px solid rgba(0, 228, 255, 0.3);
+            color: #fff;
+        }
+
+        .el-textarea__inner {
+            background: rgba(0, 228, 255, 0.1);
+            border: 1px solid rgba(0, 228, 255, 0.3);
+            color: #fff;
+        }
+
+        /* 修改表单组件的基础样式 */
+        .form-group {
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        .form-group label {
+            display: block;
+            color: #00e4ff;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        /* 修改下拉选择框样式 */
+        .filter-select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(1, 19, 38, 0.8);
+            border: 1px solid rgba(0, 228, 255, 0.3);
+            border-radius: 4px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .filter-select option {
+            padding: 8px;
+            background: rgba(1, 19, 38, 0.9);
+            color: #fff;
+        }
+
+        .filter-select[multiple] {
+            height: 150px;
+            overflow-y: auto;
+        }
+
+        /* 修改文本框样式 */
+        textarea {
+            width: 100%;
+            min-height: 120px;
+            padding: 10px;
+            background: rgba(1, 19, 38, 0.8);
+            border: 1px solid rgba(0, 228, 255, 0.3);
+            border-radius: 4px;
+            color: #fff;
+            font-size: 14px;
+            resize: vertical;
+            font-family: Arial, sans-serif;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #00e4ff;
+            box-shadow: 0 0 5px rgba(0, 228, 255, 0.5);
+        }
+
+        /* 发送消息面板样式优化 */
+        .send-message-panel {
+            background: rgba(1, 19, 38, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(0, 228, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            margin-bottom: 20px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        /* 用户选择框特定样式 */
+        #userSelectGroup {
+            margin-top: 15px;
+        }
+
+        #userSelect {
+            width: 100%;
+            min-height: 150px;
+            background: rgba(1, 19, 38, 0.8);
+            border: 1px solid rgba(0, 228, 255, 0.3);
+            border-radius: 4px;
+            color: #fff;
+            padding: 5px;
+        }
+
+        #userSelect option {
+            padding: 8px;
+            margin: 2px 0;
+            border-radius: 4px;
+        }
+
+        #userSelect option:hover,
+        #userSelect option:checked {
+            background: rgba(0, 228, 255, 0.2);
+            color: #00e4ff;
+        }
+
+        /* 提示文本样式 */
+        .select-hint {
+            font-size: 12px;
+            color: rgba(0, 228, 255, 0.7);
+            margin-top: 5px;
+            margin-bottom: 15px;
+        }
+
+        .dept-color-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        .send-btn {
+            background: linear-gradient(45deg, #00e4ff, #00a8ff);
+            color: #001529;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .send-btn:hover {
+            background: linear-gradient(45deg, #00a8ff, #00e4ff);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 228, 255, 0.3);
+        }
+
+        /* 添加新的样式 */
+        .dept-select-container,
+        .user-select-container {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid rgba(0, 228, 255, 0.3);
+            border-radius: 4px;
+            padding: 10px;
+            background: rgba(0, 228, 255, 0.1);
+        }
+
+        .dept-option,
+        .user-option {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+            padding: 5px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
+        }
+
+        .dept-option:hover,
+        .user-option:hover {
+            background: rgba(0, 228, 255, 0.2);
+        }
+
+        .dept-option input[type="checkbox"],
+        .user-option input[type="checkbox"] {
+            margin-right: 8px;
+        }
+
+        .dept-option label,
+        .user-option label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            color: #fff;
+        }
+
+        .dept-color-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        /* 控制面板样式 */
+        .control-panel {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background: rgba(1, 19, 38, 0.8);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 228, 255, 0.2);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(0, 228, 255, 0.05);
+            border-radius: 20px;
+            border: 1px solid rgba(0, 228, 255, 0.2);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #52c41a;
+            box-shadow: 0 0 6px rgba(82, 196, 26, 0.8);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.paused {
+            background: #fa8c16;
+            box-shadow: 0 0 6px rgba(250, 140, 22, 0.8);
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .status-text {
+            color: #7ecfff;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .control-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 0.3px;
+            min-width: 90px;
+            justify-content: center;
+        }
+
+        .control-btn.primary {
+            background: linear-gradient(45deg, #00e4ff, #00a8ff);
+            color: #001529;
+        }
+
+        .control-btn.primary:hover {
+            background: linear-gradient(45deg, #00a8ff, #00e4ff);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 228, 255, 0.3);
+        }
+
+        .control-btn.secondary {
+            background: linear-gradient(45deg, rgba(250, 140, 22, 0.8), rgba(255, 187, 0, 0.8));
+            color: #fff;
+        }
+
+        .control-btn.secondary:hover {
+            background: linear-gradient(45deg, rgba(255, 187, 0, 0.9), rgba(250, 140, 22, 0.9));
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(250, 140, 22, 0.3);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-icon {
+            font-size: 14px;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="container">
+        <!-- 过滤器面板 -->
+        <div class="collapsible-panel">
+            <div class="panel-header" onclick="togglePanel('filterPanel')">
+                <h3>📋 消息筛选</h3>
+                <span class="panel-toggle" id="filterPanelToggle">▼</span>
+            </div>
+            <div class="panel-content" id="filterPanelContent">
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div class="form-group" style="flex: 1; min-width: 200px;">
+                        <label>消息类型：</label>
+                        <select id="messageTypeFilter" class="filter-select">
+                            <option value="">全部类型</option>
+                            <option value="announcement">公告</option>
+                            <option value="notification">通知</option>
+                            <option value="job">作业指导</option>
+                            <option value="task">任务管理</option>
+                            <option value="warning">告警</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" style="flex: 1; min-width: 200px;">
+                        <label>消息状态：</label>
+                        <select id="messageStatusFilter" class="filter-select">
+                            <option value="">全部状态</option>
+                            <option value="1">未读</option>
+                            <option value="2">已读</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" style="flex: 1; min-width: 200px;">
+                        <label>部门筛选：</label>
+                        <select id="departmentFilter" class="filter-select">
+                            <option value="">全部部门</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" style="flex: 0; min-width: 120px; display: flex; align-items: end;">
+                        <button id="resetFilter" class="send-btn" style="width: 100%; margin: 0;">重置筛选</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 发送消息面板 -->
+        <div class="collapsible-panel">
+            <div class="panel-header" onclick="togglePanel('sendMessagePanel')">
+                <h3>📨 发送消息</h3>
+                <span class="panel-toggle" id="sendMessagePanelToggle">▼</span>
+            </div>
+            <div class="panel-content" id="sendMessagePanelContent">
+                <form id="sendMessageForm">
+                    <div class="form-group">
+                        <label>选择部门：</label>
+                        <select id="deptSelect" class="filter-select">
+                            <option value="">选择部门</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="userSelectGroup" style="display: none;">
+                        <label>选择员工：</label>
+                        <select id="userSelect" class="filter-select" multiple>
+                        </select>
+                        <div class="select-hint">按住 Ctrl/Command 键可多选</div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>消息类型</label>
+                        <select id="messageType" class="filter-select">
+                            <option value="announcement">公告</option>
+                            <option value="notification">通知</option>
+                            <option value="job">工作指引</option>
+                            <option value="task">任务管理</option>
+                            <option value="warning">告警</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>消息内容：</label>
+                        <textarea id="messageContent" required placeholder="请输入消息内容..."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="send-btn">发送消息</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 控制面板 -->
+        <div class="control-panel">
+            <div class="status-indicator">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="refreshStatus" class="status-text">实时监控中</span>
+            </div>
+            <div class="button-group">
+                <button id="refreshBtn" class="control-btn primary" onclick="manualRefresh()">
+                    <span class="btn-icon">🔄</span>
+                    <span>手动刷新</span>
+                </button>
+                <button id="toggleAutoRefresh" class="control-btn secondary" onclick="toggleAutoRefresh()">
+                    <span class="btn-icon" id="autoRefreshIcon">⏸️</span>
+                    <span id="autoRefreshText">暂停自动</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 消息表格 -->
+        <div class="message-table-container">
+            <h2>消息列表 <span id="filterStatus" style="font-size: 14px; color: #00e4ff; opacity: 0.8;"></span></h2>
+            <div id="messageTable"></div>
+        </div>
+
+        <!-- 统计图表 -->
+        <div class="charts-grid">
+            <!-- 第一行 -->
+            <div class="chart-container">
+                <div id="messageTypeChart" style="width: 100%; height: 100%;"></div>
+            </div>
+            <div class="chart-container">
+                <div id="departmentMessageChart" style="width: 100%; height: 100%;"></div>
+            </div>
+            
+            <!-- 第二行 -->
+            <div class="chart-container">
+                <div id="messageDistributionChart" style="width: 100%; height: 100%;"></div>
+            </div>
+            <div class="chart-container">
+                <div id="messageStatusChart" style="width: 100%; height: 100%;"></div>
+            </div>
+
+            <!-- 时间分布图（跨越所有列） -->
+            <div class="chart-container" style="grid-column: span 2;">
+                <div id="messageTimeChart" style="width: 100%; height: 100%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const messageTypeColors = {
+            'announcement': '#1890ff',  // 蓝色 - 公告
+            'notification': '#52c41a',  // 绿色 - 通知
+            'job': '#722ed1',          // 紫色 - 作业指导
+            'task': '#fa8c16',         // 橙色 - 任务管理
+            'warning': '#f5222d'       // 红色 - 告警
+        };
+
+        const typeMap = {
+            'announcement': '公告',
+            'job': '工作指引',
+            'notification': '通知',
+            'task': '任务管理',
+            'warning': '告警'
+        };
+        const statusMap = {
+            '1': '未读',
+            '2': '已读'
+        };
+        
+
+        const chartInstances = new Map();
+
+        // 全局变量存储原始数据
+        let originalMessageData = null;
+        let currentFilteredData = null;
+        
+        // 缓存传递过来的消息数据
+        let cachedMessageInfo = null;
+        
+        // 自动刷新相关变量
+        let autoRefreshTimer = null;
+        let isAutoRefreshEnabled = true;
+        const REFRESH_INTERVAL = 15000; // 15秒
+        
+        // 监听来自父窗口的数据
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'messageInfo') {
+                cachedMessageInfo = event.data.data;
+                console.log('接收到传递的消息数据:', cachedMessageInfo);
+                // 如果图表已初始化，直接更新数据
+                if (chartInstances.size > 0) {
+                    updateDashboardWithCachedData();
+                }
+            }
+        });
+        
+        // 使用缓存数据更新仪表板
+        function updateDashboardWithCachedData() {
+            if (!cachedMessageInfo) return;
+            
+            // 将缓存的数据转换为消息数据格式
+            const data = {
+                messages: cachedMessageInfo.messages || [],
+                totalMessages: cachedMessageInfo.totalMessages || 0,
+                publicMessagesCount: cachedMessageInfo.publicMessagesCount || 0,
+                personalMessagesCount: cachedMessageInfo.personalMessagesCount || 0,
+                messageTypeCount: cachedMessageInfo.messageTypeCount || {},
+                messageStatusCount: cachedMessageInfo.messageStatusCount || {},
+                departmentMessageCount: cachedMessageInfo.departmentMessageCount || {}
+            };
+            
+            // 保存原始数据
+            originalMessageData = data;
+            currentFilteredData = data;
+            
+            // 初始化部门过滤器
+            const departments = data.messages.map(msg => msg.department_name);
+            initDepartmentFilter(departments);
+            
+            // 初始化过滤状态显示
+            updateFilterStatus('', '', '', data.messages.length, data.messages.length);
+            
+            // 显示数据
+            displayMessageTable(data.messages);
+            updateMessageTypeChart(data.messageTypeCount);
+            updateDepartmentMessageChart(data.departmentMessageCount);
+            updateMessageDistributionChart(data);
+            updateMessageStatusChart(data.messageStatusCount);
+            updateMessageTimeChart(data.messages);
+        }
+
+        // 面板切换功能
+        function togglePanel(panelId) {
+            const content = document.getElementById(panelId + 'Content');
+            const toggle = document.getElementById(panelId + 'Toggle');
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                toggle.classList.remove('expanded');
+                toggle.textContent = '▼';
+            } else {
+                content.classList.add('expanded');
+                toggle.classList.add('expanded');
+                toggle.textContent = '▲';
+            }
+        }
+
+        // 全局暴露函数供HTML调用
+        window.togglePanel = togglePanel;
+
+        // 过滤函数
+        function filterMessages(messages, typeFilter, statusFilter, deptFilter) {
+            return messages.filter(msg => {
+                const typeMatch = !typeFilter || msg.message_type === typeFilter;
+                const statusMatch = !statusFilter || msg.message_status === statusFilter;
+                const deptMatch = !deptFilter || msg.department_name.includes(deptFilter);
+                return typeMatch && statusMatch && deptMatch;
+            });
+        }
+
+        // 应用过滤器
+        function applyFilters() {
+            if (!originalMessageData) return;
+
+            const typeFilter = document.getElementById('messageTypeFilter').value;
+            const statusFilter = document.getElementById('messageStatusFilter').value;
+            const deptFilter = document.getElementById('departmentFilter').value;
+
+            const filteredMessages = filterMessages(originalMessageData.messages, typeFilter, statusFilter, deptFilter);
+            
+            // 更新过滤状态显示
+            updateFilterStatus(typeFilter, statusFilter, deptFilter, filteredMessages.length, originalMessageData.messages.length);
+            
+            // 重新计算统计数据
+            const filteredData = {
+                ...originalMessageData,
+                messages: filteredMessages,
+                totalMessages: filteredMessages.length,
+                publicMessagesCount: filteredMessages.filter(msg => msg.is_public).length,
+                personalMessagesCount: filteredMessages.filter(msg => !msg.is_public).length
+            };
+
+            // 重新计算各种统计
+            const messageTypeCount = {};
+            const messageStatusCount = {};
+            const departmentMessageCount = {};
+            
+            filteredMessages.forEach(msg => {
+                messageTypeCount[msg.message_type] = (messageTypeCount[msg.message_type] || 0) + 1;
+                messageStatusCount[msg.message_status] = (messageStatusCount[msg.message_status] || 0) + 1;
+                departmentMessageCount[msg.department_name] = (departmentMessageCount[msg.department_name] || 0) + 1;
+            });
+
+            filteredData.messageTypeCount = messageTypeCount;
+            filteredData.messageStatusCount = messageStatusCount;
+            filteredData.departmentMessageCount = departmentMessageCount;
+
+            currentFilteredData = filteredData;
+            updateDisplayWithFilteredData(filteredData);
+        }
+
+        // 更新过滤状态显示
+        function updateFilterStatus(typeFilter, statusFilter, deptFilter, filteredCount, totalCount) {
+            const statusElement = document.getElementById('filterStatus');
+            let statusText = '';
+            
+            if (typeFilter || statusFilter || deptFilter) {
+                const filters = [];
+                if (typeFilter) filters.push(`类型:${typeMap[typeFilter]}`);
+                if (statusFilter) filters.push(`状态:${statusMap[statusFilter]}`);
+                if (deptFilter) filters.push(`部门:${deptFilter}`);
+                
+                statusText = `(已筛选: ${filters.join(', ')} | 显示 ${filteredCount}/${totalCount} 条)`;
+            } else {
+                statusText = `(共 ${totalCount} 条消息)`;
+            }
+            
+            statusElement.textContent = statusText;
+        }
+
+        // 更新显示
+        function updateDisplayWithFilteredData(data) {
+            displayMessageTable(data.messages);
+            updateMessageTypeChart(data.messageTypeCount);
+            updateDepartmentMessageChart(data.departmentMessageCount);
+            updateMessageDistributionChart(data);
+            updateMessageStatusChart(data.messageStatusCount);
+            updateMessageTimeChart(data.messages);
+        }
+
+        // 重置过滤器
+        function resetFilters() {
+            document.getElementById('messageTypeFilter').value = '';
+            document.getElementById('messageStatusFilter').value = '';
+            document.getElementById('departmentFilter').value = '';
+            
+            if (originalMessageData) {
+                currentFilteredData = originalMessageData;
+                updateFilterStatus('', '', '', originalMessageData.messages.length, originalMessageData.messages.length);
+                updateDisplayWithFilteredData(originalMessageData);
+            }
+        }
+
+        // 初始化部门过滤器选项
+        function initDepartmentFilter(departments) {
+            const deptFilter = document.getElementById('departmentFilter');
+            deptFilter.innerHTML = '<option value="">全部部门</option>';
+            
+            const uniqueDepts = [...new Set(departments)];
+            uniqueDepts.forEach(dept => {
+                const option = document.createElement('option');
+                option.value = dept;
+                option.textContent = dept;
+                deptFilter.appendChild(option);
+            });
+        }
+
+        async function fetchMessageInfo() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const customerId = urlParams.get('customerId') || '1';
+                const deptId = urlParams.get('deptId') || '';
+                const userId = urlParams.get('userId') || '';
+                
+                console.log('fetchMessageInfo - URL参数:', { customerId, deptId, userId });
+                console.log('fetchMessageInfo - 完整URL:', window.location.href);
+
+                // 构建URL，使用 deptId 作为 orgId（如果存在），否则使用 customerId
+                const orgId = deptId || customerId;
+                let url = `/get_messages_by_orgIdAndUserId?orgId=${orgId}`;
+                if (userId && userId !== 'all') url += `&userId=${userId}`;
+                
+                console.log('fetchMessageInfo - 请求URL:', url);
+
+                const response = await fetch(url);
+                console.log('fetchMessageInfo - 响应状态:', response.status);
+                
+                const result = await response.json();
+                console.log('fetchMessageInfo - 响应数据:', result);
+                
+                if (result.success) {
+                    console.log('fetchMessageInfo - 获取到消息数量:', result.data ? result.data.length : 0);
+                    return result.data;
+                }
+                throw new Error(`Failed to fetch message data: ${result.message || '未知错误'}`);
+            } catch (error) {
+                console.error('Error fetching message data:', error);
+                return null;
+            }
+        }
+
+        function displayMessageTable(messages) {
+            const container = document.getElementById('messageTable');
+            
+            // 按发送时间倒序排列（最新消息在前）
+            const sortedMessages = [...messages].sort((a, b) => {
+                const timeA = new Date(a.sent_time || 0);
+                const timeB = new Date(b.sent_time || 0);
+                return timeB - timeA; // 倒序排列
+            });
+            
+            const tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>消息ID</th>
+                            <th>消息类型</th>
+                            <th>部门</th>
+                            <th>内容</th>
+                            <th>发送时间</th>
+                            <th>接收时间</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${sortedMessages.map(msg => `
+                            <tr>
+                                <td>${msg.message_id}</td>
+                                <td>
+                                    <span class="message-badge type-${msg.message_type}">
+                                        ${typeMap[msg.message_type]}
+                                    </span>
+                                </td>
+                                <td>${msg.department_name}</td>
+                                <td>${msg.message}</td>
+                                <td>${msg.sent_time}</td>
+                                <td>${msg.received_time || '-'}</td>
+                                <td>
+                                    <span class="status-${msg.message_status === '1' ? 'unread' : 'read'}">
+                                        ${statusMap[msg.message_status]}
+                                    </span>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            container.innerHTML = tableHTML;
+        }
+
+        function updateMessageTypeChart(data) {
+            const chart = chartInstances.get('messageTypeChart');
+           
+            
+            chart.setOption({
+                title: {
+                    text: '消息类型分布',
+                    textStyle: { color: '#fff' }
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{b}: {c}条 ({d}%)'
+                },
+                legend: {
+                    orient: 'vertical',
+                    right: 10,
+                    top: 'center',
+                    textStyle: { color: '#fff' }
+                },
+                series: [{
+                    type: 'pie',
+                    radius: ['50%', '70%'],
+                    itemStyle: {
+                        borderRadius: 10,
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    },
+                    label: {
+                        show: true,
+                        formatter: '{b}: {c}条'
+                    },
+                    data: Object.entries(data).map(([key, value]) => ({
+                        name: typeMap[key],
+                        value: value,
+                        itemStyle: {
+                            color: messageTypeColors[key] || '#9c27b0'
+                        }
+                    }))
+                }]
+            });
+        }
+
+        function updateDepartmentMessageChart(data) {
+            const chart = chartInstances.get('departmentMessageChart');
+            const departments = Object.entries(data);
+
+            chart.setOption({
+                title: {
+                    text: '部门消息分布',
+                    textStyle: { color: '#fff' }
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: departments.map(d => d[0]),
+                    axisLabel: {
+                        color: '#fff',
+                        rotate: 45
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: { color: '#fff' }
+                },
+                series: [{
+                    type: 'bar',
+                    data: departments.map(d => ({
+                        value: d[1],
+                        itemStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: '#83bff6' },
+                                { offset: 0.5, color: '#188df0' },
+                                { offset: 1, color: '#188df0' }
+                            ])
+                        }
+                    })),
+                    label: {
+                        show: true,
+                        position: 'top',
+                        color: '#fff'
+                    }
+                }]
+            });
+        }
+
+        function updateMessageDistributionChart(data) {
+            const chart = chartInstances.get('messageDistributionChart');
+            
+            chart.setOption({
+                title: {
+                    text: '消息分布统计',
+                    textStyle: { color: '#fff' }
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{b}: {c}条 ({d}%)'
+                },
+                legend: {
+                    orient: 'vertical',
+                    right: 10,
+                    top: 'center',
+                    textStyle: { color: '#fff' }
+                },
+                series: [{
+                    type: 'pie',
+                    radius: ['50%', '70%'],
+                    itemStyle: {
+                        borderRadius: 10,
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    },
+                    label: {
+                        show: true,
+                        formatter: '{b}: {c}条'
+                    },
+                    emphasis: {
+                        label: {
+                            show: true,
+                            fontSize: '20',
+                            fontWeight: 'bold'
+                        }
+                    },
+                    data: [
+                        {
+                            name: '公开消息',
+                            value: data.publicMessagesCount,
+                            itemStyle: {
+                                color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                                    { offset: 0, color: '#2196f3' },
+                                    { offset: 1, color: '#83bff6' }
+                                ])
+                            }
+                        },
+                        {
+                            name: '个人消息',
+                            value: data.personalMessagesCount,
+                            itemStyle: {
+                                color: new echarts.graphic.LinearGradient(0, 0, 1, 0, [
+                                    { offset: 0, color: '#9c27b0' },
+                                    { offset: 1, color: '#ba68c8' }
+                                ])
+                            }
+                        }
+                    ]
+                }]
+            });
+        }
+
+        function updateMessageStatusChart(data) {
+            const chart = chartInstances.get('messageStatusChart');
+            const statusData = Object.entries(data).map(([status, count]) => ({
+                name: status === '1' ? '已读' : '未读',
+                value: count
+            }));
+
+            chart.setOption({
+                title: {
+                    text: '消息状态统计',
+                    textStyle: { color: '#fff' }
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{b}: {c}条 ({d}%)'
+                },
+                series: [{
+                    type: 'pie',
+                    radius: ['50%', '70%'],
+                    itemStyle: {
+                        borderRadius: 10
+                    },
+                    label: {
+                        show: true,
+                        color: '#fff'
+                    },
+                    data: statusData
+                }]
+            });
+        }
+
+        function updateMessageTimeChart(messages) {
+            const chart = chartInstances.get('messageTimeChart');
+            
+            // 按小时统计发送和接收时间
+            const timeData = messages.reduce((acc, msg) => {
+                const sentHour = new Date(msg.sent_time).getHours();
+                const receivedHour = new Date(msg.received_time).getHours();
+                
+                acc.sent[sentHour] = (acc.sent[sentHour] || 0) + 1;
+                acc.received[receivedHour] = (acc.received[receivedHour] || 0) + 1;
+                
+                return acc;
+            }, { sent: {}, received: {} });
+
+            // 准备24小时的数据
+            const hours = Array.from({length: 24}, (_, i) => i);
+            const sentData = hours.map(hour => timeData.sent[hour] || 0);
+            const receivedData = hours.map(hour => timeData.received[hour] || 0);
+
+            chart.setOption({
+                title: {
+                    text: '消息时间分布',
+                    textStyle: { color: '#fff' }
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'shadow'
+                    }
+                },
+                legend: {
+                    data: ['发送时间', '接收时间'],
+                    textStyle: { color: '#fff' },
+                    top: 25
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: hours.map(h => `${h}:00`),
+                    axisLabel: {
+                        color: '#fff',
+                        interval: 2
+                    },
+                    axisLine: {
+                        lineStyle: { color: 'rgba(0, 228, 255, 0.3)' }
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '消息数量',
+                    nameTextStyle: { color: '#fff' },
+                    axisLabel: { color: '#fff' },
+                    splitLine: {
+                        lineStyle: { color: 'rgba(0, 228, 255, 0.1)' }
+                    }
+                },
+                series: [
+                    {
+                        name: '发送时间',
+                        type: 'line',
+                        smooth: true,
+                        data: sentData,
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: 'rgba(33, 150, 243, 0.3)' },
+                                { offset: 1, color: 'rgba(33, 150, 243, 0.1)' }
+                            ])
+                        },
+                        lineStyle: {
+                            color: '#2196f3',
+                            width: 2
+                        },
+                        itemStyle: {
+                            color: '#2196f3'
+                        }
+                    },
+                    {
+                        name: '接收时间',
+                        type: 'line',
+                        smooth: true,
+                        data: receivedData,
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: 'rgba(156, 39, 176, 0.3)' },
+                                { offset: 1, color: 'rgba(156, 39, 176, 0.1)' }
+                            ])
+                        },
+                        lineStyle: {
+                            color: '#9c27b0',
+                            width: 2
+                        },
+                        itemStyle: {
+                            color: '#9c27b0'
+                        }
+                    }
+                ]
+            });
+        }
+
+        async function updateDashboard(forceRefresh = false) {
+            // 如果强制刷新或没有缓存数据，调用接口获取
+            if (forceRefresh || !cachedMessageInfo) {
+                console.log('🔄 调用接口获取最新消息数据...');
+                const data = await fetchMessageInfo();
+                if (data) {
+                    // 保存原始数据
+                    originalMessageData = data;
+                    currentFilteredData = data;
+                    
+                    // 初始化部门过滤器
+                    const departments = data.messages.map(msg => msg.department_name);
+                    initDepartmentFilter(departments);
+                    
+                    // 初始化过滤状态显示
+                    updateFilterStatus('', '', '', data.messages.length, data.messages.length);
+                    
+                    // 显示数据
+                    displayMessageTable(data.messages);
+                    updateMessageTypeChart(data.messageTypeCount);
+                    updateDepartmentMessageChart(data.departmentMessageCount);
+                    updateMessageDistributionChart(data);
+                    updateMessageStatusChart(data.messageStatusCount);
+                    updateMessageTimeChart(data.messages);
+                }
+                return;
+            }
+            
+            // 只有首次加载且有缓存数据时才使用缓存
+            console.log('✅ 使用传递的缓存数据，避免重复接口调用');
+            updateDashboardWithCachedData();
+        }
+
+        function initCharts() {
+            const chartIds = [
+                'messageTypeChart', 'departmentMessageChart',
+                'messageDistributionChart', 'messageStatusChart',
+                'messageTimeChart'
+            ];
+            
+            chartIds.forEach(id => {
+                chartInstances.set(id, echarts.init(document.getElementById(id)));
+            });
+        }
+
+        async function initDashboard() {
+            initCharts();
+            
+            // 等待一小段时间，看是否有缓存数据传递过来
+            setTimeout(async () => {
+                if (cachedMessageInfo) {
+                    console.log('✅ 使用传递的缓存数据，避免重复接口调用');
+                } else {
+                    console.log('❌ 未接收到缓存数据，将调用接口获取');
+                }
+                
+                await updateDashboard();
+                
+                // 启动自动刷新
+                if (isAutoRefreshEnabled) {
+                    startAutoRefresh();
+                }
+            }, 1000); // 等待1秒让postMessage有时间传递数据
+
+            window.addEventListener('resize', debounce(() => {
+                chartInstances.forEach(chart => chart.resize());
+            }, 250));
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        // 部门颜色方案
+        const departmentColors = {
+            '煤矿集团总部': '#3498db',
+            '安全管理部': '#e74c3c',
+            '生产技术部': '#2ecc71',
+            '财务部': '#f1c40f',
+            '人力资源部': '#9b59b6',
+            '销售部': '#1abc9c'
+        };
+
+        // 为子部门生成渐变色
+        function generateSubDepartmentColor(parentColor, index, total) {
+            const color = tinycolor(parentColor);
+            const hsl = color.toHsl();
+            hsl.l = Math.min(0.9, hsl.l + (index / total) * 0.3);
+            return tinycolor(hsl).toHexString();
+        }
+
+        // 获取随机颜色
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        // 修改加载部门数据的函数
+        async function loadDepartments() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const customerId = urlParams.get('customerId') || '1';
+                const response = await fetch(`/get_departments?orgId=${customerId}`);
+                const data = await response.json();
+                const deptSelect = document.getElementById('deptSelect');
+
+                deptSelect.innerHTML = '<option value="">选择部门</option>';
+
+                function addDepartmentOptions(departments, level = 0) {
+                    departments.forEach(dept => {
+                        const option = document.createElement('option');
+                        option.value = dept.id;
+                        const indent = '　'.repeat(level);
+                        option.textContent = indent + dept.name;
+                        deptSelect.appendChild(option);
+
+                        if (dept.children && dept.children.length > 0) {
+                            addDepartmentOptions(dept.children, level + 1);
+                        }
+                    });
+                }
+
+                if (data.success && data.data) {
+                    addDepartmentOptions(data.data);
+                }
+
+                // 添加部门选择事件监听
+                deptSelect.addEventListener('change', handleDepartmentSelection);
+            } catch (error) {
+                console.error('加载部门失败:', error);
+            }
+        }
+
+        // 修改加载用户数据的函数
+        async function loadUsers(deptId) {
+            try {
+                console.log('Loading users for department:', deptId);
+                const urlParams = new URLSearchParams(window.location.search);
+                const customerId = urlParams.get('customerId') || '1';
+                const response = await fetch(`/fetch_users?orgId=${deptId}`);
+                const data = await response.json();
+                console.log('User data received:', data);
+                
+                const userSelect = document.getElementById('userSelect');
+                const userSelectGroup = document.getElementById('userSelectGroup');
+
+                // 清空现有选项
+                userSelect.innerHTML = '';
+                
+                // 检查用户数据是否为数组
+                const users = Array.isArray(data) ? data : (data.data && data.data.users ? data.data.users : []);
+                
+                if (users && users.length > 0) {
+                    // 添加用户选项
+                    users.forEach(user => {
+                        // 检查用户对象是否有效
+                        if (user && (user.id || user.user_id)) {
+                            const option = document.createElement('option');
+                            option.value = user.id || user.user_id;
+                            let displayText = user.user_name || user.name || user.username || '未知用户';
+                            // 如果有职位信息，添加到显示文本中
+                            if (user.position) {
+                                displayText += ` (${user.position})`;
+                            }
+                            option.textContent = displayText;
+                            userSelect.appendChild(option);
+                        }
+                    });
+                    
+                    // 显示用户选择组
+                    userSelectGroup.style.display = 'block';
+                    console.log('Users loaded successfully:', userSelect.options.length, '个用户');
+                } else {
+                    console.log('No users found in data');
+                    userSelect.innerHTML = '<option disabled>该部门暂无用户</option>';
+                    userSelectGroup.style.display = 'block';
+                }
+            } catch (error) {
+                console.error('加载用户失败:', error);
+                const userSelect = document.getElementById('userSelect');
+                userSelect.innerHTML = '<option disabled>加载用户失败，请重试</option>';
+                document.getElementById('userSelectGroup').style.display = 'block';
+            }
+        }
+
+        // 修改部门选择处理函数
+        function handleDepartmentSelection(event) {
+            const selectedDeptId = event.target.value;
+            console.log('Selected department:', selectedDeptId);
+            
+            if (selectedDeptId) {
+                loadUsers(selectedDeptId);
+            } else {
+                const userSelectGroup = document.getElementById('userSelectGroup');
+                const userSelect = document.getElementById('userSelect');
+                userSelect.innerHTML = '';
+                userSelectGroup.style.display = 'none';
+            }
+        }
+
+        // 修改发送消息函数
+        async function sendMessage(event) {
+            event.preventDefault();
+            
+            const messageContent = document.getElementById('messageContent').value.trim();
+            const selectedDeptId = document.getElementById('deptSelect').value;
+            const userSelect = document.getElementById('userSelect');
+            const selectedUsers = Array.from(userSelect.selectedOptions)
+                .filter(option => !option.disabled)
+                .map(option => option.value);
+            const messageType = document.getElementById('messageType').value;
+
+            if (!messageContent) {
+                showCustomAlert('请输入消息内容', null);
+                return;
+            }
+
+            if (!selectedDeptId) {
+                showCustomAlert('请选择接收部门', null);
+                return;
+            }
+
+            try {
+                const sendButton = event.target.querySelector('button[type="submit"]');
+                sendButton.disabled = true;
+                sendButton.textContent = '发送中...';
+
+                if (selectedUsers.length > 0) {
+                    // 发送用户消息
+                    for (const userId of selectedUsers) {
+                        await sendMessageToServer({
+                            message: messageContent,
+                            message_type: messageType,
+                            sender_type: 'system',
+                            receiver_type: 'user',
+                            message_status: '1',
+                            department_info: selectedDeptId,
+                            user_id: userId
+                        });
+                    }
+                } else {
+                    // 发送部门消息
+                    console.log('sendMessageToServer.selectedDeptId',selectedDeptId);
+                    console.log('sendMessageToServer.messageContent',messageContent);
+                    await sendMessageToServer({
+                        message: messageContent,
+                        message_type: messageType,
+                        sender_type: 'system',
+                        receiver_type: 'department',
+                        message_status: '1',
+                        department_info: selectedDeptId
+                    });
+                }
+
+                showCustomAlert('消息发送成功！', 'updateDashboard()');
+                document.getElementById('messageContent').value = '';
+                document.getElementById('deptSelect').value = '';
+                userSelect.innerHTML = '';
+                document.getElementById('userSelectGroup').style.display = 'none';
+                updateDashboard();
+            } catch (error) {
+                console.error('发送消息失败:', error);
+                showCustomAlert(error.message || '发送消息失败，请重试！', null);
+            } finally {
+                const sendButton = event.target.querySelector('button[type="submit"]');
+                sendButton.disabled = false;
+                sendButton.textContent = '发送消息';
+            }
+        }
+
+        // 添加发送消息到服务器的函数
+        async function sendMessageToServer(messageData) {
+            try {
+           
+                const response = await fetch('/DeviceMessage/save_message', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        ...messageData
+                    })
+                });
+
+                // 检查响应的Content-Type
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    throw new Error('服务器返回了非JSON格式的响应，请检查服务器端配置');
+                }
+
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.message || `服务器返回错误状态码: ${response.status}`);
+                }
+
+                if (!result.success) {
+                    throw new Error(result.message || '发送消息失败');
+                }
+
+                return result;
+            } catch (error) {
+                console.error('发送消息详细错误:', error);
+                if (error.name === 'SyntaxError') {
+                    throw new Error('服务器响应格式错误，请联系管理员检查服务器配置');
+                }
+                throw new Error(error.message || '发送消息失败，请稍后重试');
+            }
+        }
+
+        // 确保在文档加载完成后添加事件监听器
+        document.addEventListener('DOMContentLoaded', function() {
+            const deptSelect = document.getElementById('deptSelect');
+            deptSelect.addEventListener('change', handleDepartmentSelection);
+            
+            // 添加过滤器事件监听器
+            document.getElementById('messageTypeFilter').addEventListener('change', applyFilters);
+            document.getElementById('messageStatusFilter').addEventListener('change', applyFilters);
+            document.getElementById('departmentFilter').addEventListener('change', applyFilters);
+            document.getElementById('resetFilter').addEventListener('click', resetFilters);
+            
+            // 初始化其他功能
+            loadDepartments();
+            initDashboard();
+            document.getElementById('sendMessageForm').addEventListener('submit', sendMessage);
+        });
+
+        // 手动刷新功能
+        function manualRefresh() {
+            const btn = document.getElementById('refreshBtn');
+            const btnIcon = btn.querySelector('.btn-icon');
+            const btnText = btn.querySelector('span:last-child');
+            
+            btnText.textContent = '刷新中...';
+            btnIcon.style.animation = 'spin 1s linear infinite';
+            btn.disabled = true;
+            
+            console.log('🔄 手动刷新消息数据...');
+            updateDashboard(true).then(() => {
+                btnText.textContent = '手动刷新';
+                btnIcon.style.animation = '';
+                btn.disabled = false;
+                console.log('✅ 手动刷新完成');
+            }).catch(error => {
+                console.error('❌ 手动刷新失败:', error);
+                btnText.textContent = '刷新失败';
+                btnIcon.textContent = '❌';
+                setTimeout(() => {
+                    btnText.textContent = '手动刷新';
+                    btnIcon.textContent = '🔄';
+                    btnIcon.style.animation = '';
+                    btn.disabled = false;
+                }, 2000);
+            });
+        }
+        
+        // 切换自动刷新状态
+        function toggleAutoRefresh() {
+            const btn = document.getElementById('toggleAutoRefresh');
+            const status = document.getElementById('refreshStatus');
+            const statusDot = document.getElementById('statusDot');
+            const btnIcon = document.getElementById('autoRefreshIcon');
+            const btnText = document.getElementById('autoRefreshText');
+            
+            if (isAutoRefreshEnabled) {
+                // 关闭自动刷新
+                clearInterval(autoRefreshTimer);
+                autoRefreshTimer = null;
+                isAutoRefreshEnabled = false;
+                btnIcon.textContent = '▶️';
+                btnText.textContent = '启动监控';
+                status.textContent = '监控已暂停';
+                statusDot.classList.add('paused');
+                console.log('❌ 自动刷新已关闭');
+            } else {
+                // 开启自动刷新
+                startAutoRefresh();
+                isAutoRefreshEnabled = true;
+                btnIcon.textContent = '⏸️';
+                btnText.textContent = '暂停自动';
+                status.textContent = '实时监控中';
+                statusDot.classList.remove('paused');
+                console.log('✅ 自动刷新已开启');
+            }
+        }
+        
+        // 启动自动刷新
+        function startAutoRefresh() {
+            if (autoRefreshTimer) {
+                clearInterval(autoRefreshTimer);
+            }
+            
+            autoRefreshTimer = setInterval(() => {
+                if (isAutoRefreshEnabled) {
+                    console.log('🔄 自动刷新消息数据...');
+                    updateDashboard(true).catch(error => {
+                        console.error('❌ 自动刷新失败:', error);
+                    });
+                }
+            }, REFRESH_INTERVAL);
+        }
+        
+        // 停止自动刷新
+        function stopAutoRefresh() {
+            if (autoRefreshTimer) {
+                clearInterval(autoRefreshTimer);
+                autoRefreshTimer = null;
+            }
+        }
+        
+        // 全局暴露刷新相关函数
+        window.manualRefresh = manualRefresh;
+        window.toggleAutoRefresh = toggleAutoRefresh;
+
+        function showCustomAlert(msg, cb){
+            const modal=document.createElement('div');
+            modal.style.cssText='position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,21,41,0.7);z-index:10000;display:flex;align-items:center;justify-content:center;';
+            modal.innerHTML=`
+                <div style="background:rgba(10,24,48,0.98);border-radius:14px;box-shadow:0 0 24px #00e4ff44;padding:32px 38px;min-width:320px;max-width:420px;color:#fff;position:relative;display:flex;flex-direction:column;align-items:center;">
+                    <div style="font-size:18px;font-weight:700;margin-bottom:18px;">${msg}</div>
+                    <button style="margin-top:10px;padding:8px 32px;background:#1a3b5d;color:#00e4ff;border:none;border-radius:6px;font-size:16px;cursor:pointer;" onclick="this.parentNode.parentNode.remove();${cb?'('+cb+')':''}">确定</button>
+                </div>`;
+            document.body.appendChild(modal);
+        }
+    </script>
+</body>
+</html> 

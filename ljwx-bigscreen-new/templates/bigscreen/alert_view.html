@@ -1,0 +1,1942 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>告警中心</title>
+    <script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: transparent;
+            color: #fff;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* 告警表格样式 */
+        .alert-table-container {
+            background: rgba(1, 19, 38, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(0, 228, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* 表格标题样式 */
+        .alert-table-container h2 {
+            color: #00e4ff;
+            font-size: 20px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(0, 228, 255, 0.5);
+        }
+
+        /* 添加内部滚动容器 */
+        #alertTable {
+            max-height: 400px;
+            overflow-y: auto;
+            overflow-x: hidden;
+            border-radius: 8px;
+        }
+
+        /* 表格基础样式 */
+        table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 10px;
+            font-size: 14px;
+            position: relative;
+        }
+
+        /* 表头样式 */
+        th {
+            background: linear-gradient(180deg, rgba(0, 228, 255, 0.15) 0%, rgba(0, 228, 255, 0.05) 100%);
+            color: #00e4ff;
+            font-weight: 600;
+            padding: 15px;
+            text-align: left;
+            border-bottom: 2px solid rgba(0, 228, 255, 0.2);
+            text-shadow: 0 0 10px rgba(0, 228, 255, 0.3);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+
+        th:first-child {
+            border-top-left-radius: 8px;
+        }
+
+        th:last-child {
+            border-top-right-radius: 8px;
+        }
+
+        /* 表格内容样式 */
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid rgba(0, 228, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        /* 条带效果 */
+        tr:nth-child(even) {
+            background: rgba(0, 228, 255, 0.03);
+        }
+
+        /* 鼠标悬停效果 */
+        tr:hover td {
+            background: rgba(0, 228, 255, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 228, 255, 0.1);
+        }
+
+        /* 单元格内容样式 */
+        td:first-child {
+            font-weight: 600;
+            color: #00e4ff;
+        }
+
+        /* 状态和级别标签样式优化 */
+        .status-badge, .level-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .status-badge:hover, .level-badge:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .status-pending {
+            background: linear-gradient(45deg, rgba(255, 152, 0, 0.2) 0%, rgba(255, 152, 0, 0.4) 100%);
+            color: #ff9800;
+            border: 1px solid rgba(255, 152, 0, 0.3);
+        }
+
+        .status-responded {
+            background: linear-gradient(45deg, rgba(76, 175, 80, 0.2) 0%, rgba(76, 175, 80, 0.4) 100%);
+            color: #4caf50;
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+
+        .level-critical {
+            background: linear-gradient(45deg, rgba(244, 67, 54, 0.2) 0%, rgba(244, 67, 54, 0.4) 100%);
+            color: #f44336;
+            border: 1px solid rgba(244, 67, 54, 0.3);
+        }
+
+        .level-medium {
+            background: linear-gradient(45deg, rgba(255, 152, 0, 0.2) 0%, rgba(255, 152, 0, 0.4) 100%);
+            color: #ff9800;
+            border: 1px solid rgba(255, 152, 0, 0.3);
+        }
+
+        /* 滚动条美化 */
+        #alertTable::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+
+        #alertTable::-webkit-scrollbar-track {
+            background: rgba(0, 228, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        #alertTable::-webkit-scrollbar-thumb {
+            background: rgba(0, 228, 255, 0.2);
+            border-radius: 4px;
+        }
+
+        #alertTable::-webkit-scrollbar-thumb:hover {
+            background: rgba(0, 228, 255, 0.3);
+        }
+
+        /* 移除原来的滚动条样式 */
+        .alert-table-container::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* 图表网格容器 */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .chart-container {
+            background: rgba(1, 19, 38, 0.8);
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid rgba(0, 228, 255, 0.2);
+            height: 300px;
+        }
+
+        /* 添加按钮样式 */
+        .action-button {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            cursor: pointer;
+            border: none;
+            background: linear-gradient(45deg, rgba(0, 228, 255, 0.2) 0%, rgba(0, 228, 255, 0.4) 100%);
+            color: #00e4ff;
+            border: 1px solid rgba(0, 228, 255, 0.3);
+        }
+
+        .action-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            background: linear-gradient(45deg, rgba(0, 228, 255, 0.3) 0%, rgba(0, 228, 255, 0.5) 100%);
+        }
+
+        .action-button:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        /* 可折叠面板样式 */
+        .collapsible-panel {
+            background: rgba(1, 19, 38, 0.8);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 228, 255, 0.2);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            margin-bottom: 20px;
+            width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .panel-header {
+            padding: 20px;
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0, 228, 255, 0.05);
+            transition: background 0.3s ease;
+        }
+
+        .panel-header:hover {
+            background: rgba(0, 228, 255, 0.1);
+        }
+
+        .panel-header h3 {
+            color: #00e4ff;
+            font-size: 20px;
+            margin: 0;
+            text-shadow: 0 0 10px rgba(0, 228, 255, 0.5);
+        }
+
+        .panel-toggle {
+            color: #00e4ff;
+            font-size: 18px;
+            font-weight: bold;
+            transition: transform 0.3s ease;
+        }
+
+        .panel-toggle.expanded {
+            transform: rotate(180deg);
+        }
+
+        .panel-content {
+            padding: 0;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease, padding 0.3s ease;
+        }
+
+        .panel-content.expanded {
+            max-height: 1000px;
+            padding: 20px;
+        }
+
+        /* 过滤器样式 */
+        .form-group {
+            margin-bottom: 20px;
+            width: 100%;
+        }
+
+        .form-group label {
+            display: block;
+            color: #00e4ff;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .filter-select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(1, 19, 38, 0.8);
+            border: 1px solid rgba(0, 228, 255, 0.3);
+            border-radius: 4px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .filter-select option {
+            padding: 8px;
+            background: rgba(1, 19, 38, 0.9);
+            color: #fff;
+        }
+
+        .send-btn {
+            background: linear-gradient(45deg, #00e4ff, #00a8ff);
+            color: #001529;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .send-btn:hover {
+            background: linear-gradient(45deg, #00a8ff, #00e4ff);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 228, 255, 0.3);
+        }
+
+        /* 多选复选框样式 */
+        .alert-checkbox {
+            width: 16px;
+            height: 16px;
+            accent-color: #00e4ff;
+            cursor: pointer;
+        }
+
+        /* 批处理按钮样式 */
+        .batch-actions {
+            display: none;
+            margin-bottom: 15px;
+            padding: 15px;
+            background: rgba(0, 228, 255, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(0, 228, 255, 0.3);
+        }
+
+        .batch-actions.show {
+            display: block;
+        }
+
+        .batch-btn {
+            background: linear-gradient(45deg, #f44336, #ff6b6b);
+            color: #fff;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            margin-right: 10px;
+        }
+
+        .batch-btn:hover {
+            background: linear-gradient(45deg, #d32f2f, #f44336);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+        }
+
+        /* 控制面板样式 */
+        .control-panel {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background: rgba(1, 19, 38, 0.8);
+            border-radius: 12px;
+            border: 1px solid rgba(0, 228, 255, 0.2);
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: rgba(0, 228, 255, 0.05);
+            border-radius: 20px;
+            border: 1px solid rgba(0, 228, 255, 0.2);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #52c41a;
+            box-shadow: 0 0 6px rgba(82, 196, 26, 0.8);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.paused {
+            background: #fa8c16;
+            box-shadow: 0 0 6px rgba(250, 140, 22, 0.8);
+            animation: none;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.2); opacity: 0.7; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .status-text {
+            color: #7ecfff;
+            font-size: 12px;
+            font-weight: 500;
+            letter-spacing: 0.3px;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 8px;
+            margin-left: auto;
+        }
+
+        .control-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            letter-spacing: 0.3px;
+            min-width: 90px;
+            justify-content: center;
+        }
+
+        .control-btn.primary {
+            background: linear-gradient(45deg, #00e4ff, #00a8ff);
+            color: #001529;
+        }
+
+        .control-btn.primary:hover {
+            background: linear-gradient(45deg, #00a8ff, #00e4ff);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 228, 255, 0.3);
+        }
+
+        .control-btn.secondary {
+            background: linear-gradient(45deg, rgba(250, 140, 22, 0.8), rgba(255, 187, 0, 0.8));
+            color: #fff;
+        }
+
+        .control-btn.secondary:hover {
+            background: linear-gradient(45deg, rgba(255, 187, 0, 0.9), rgba(250, 140, 22, 0.9));
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(250, 140, 22, 0.3);
+        }
+
+        .control-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .btn-icon {
+            font-size: 14px;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 过滤器面板 -->
+        <div class="collapsible-panel">
+            <div class="panel-header" onclick="togglePanel('alertFilterPanel')">
+                <h3>🔍 告警筛选</h3>
+                <span class="panel-toggle" id="alertFilterPanelToggle">▼</span>
+            </div>
+            <div class="panel-content" id="alertFilterPanelContent">
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+                    <div class="form-group" style="flex: 1; min-width: 200px;">
+                        <label>告警类型：</label>
+                        <select id="alertTypeFilter" class="filter-select">
+                            <option value="">全部类型</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" style="flex: 1; min-width: 200px;">
+                        <label>告警状态：</label>
+                        <select id="alertStatusFilter" class="filter-select">
+                            <option value="">全部状态</option>
+                            <option value="pending">待处理</option>
+                            <option value="responded">已响应</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" style="flex: 1; min-width: 200px;">
+                        <label>严重级别：</label>
+                        <select id="severityLevelFilter" class="filter-select">
+                            <option value="">全部级别</option>
+                            <option value="critical">严重</option>
+                            <option value="medium">中等</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" style="flex: 0; min-width: 120px; display: flex; align-items: end;">
+                        <button id="resetAlertFilter" class="send-btn" style="width: 100%; margin: 0;">重置筛选</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 控制面板 -->
+        <div class="control-panel">
+            <div class="status-indicator">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="refreshStatus" class="status-text">实时监控中</span>
+            </div>
+            <div class="button-group">
+                <button id="refreshBtn" class="control-btn primary" onclick="manualRefresh()">
+                    <span class="btn-icon">🔄</span>
+                    <span>手动刷新</span>
+                </button>
+                <button id="toggleAutoRefresh" class="control-btn secondary" onclick="toggleAutoRefresh()">
+                    <span class="btn-icon" id="autoRefreshIcon">⏸️</span>
+                    <span id="autoRefreshText">暂停自动</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- 告警表格 -->
+        <div class="alert-table-container">
+            <h2>告警列表 <span id="alertFilterStatus" style="font-size: 14px; color: #00e4ff; opacity: 0.8;"></span></h2>
+            
+            <!-- 批处理操作 -->
+            <div class="batch-actions" id="batchActions">
+                <span style="color: #00e4ff; margin-right: 15px;">已选择 <span id="selectedCount">0</span> 条告警</span>
+                <button id="batchProcessBtn" class="batch-btn">批量处理</button>
+                <button id="selectAllBtn" class="send-btn" style="padding: 6px 12px; font-size: 12px;">全选</button>
+                <button id="clearSelectionBtn" class="send-btn" style="padding: 6px 12px; font-size: 12px;">清空</button>
+            </div>
+            
+            <div id="alertTable"></div>
+        </div>
+
+        <!-- 统计图表 -->
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div id="alertLevelChart" style="width: 100%; height: 100%;"></div>
+            </div>
+            <div class="chart-container">
+                <div id="alertStatusChart" style="width: 100%; height: 100%;"></div>
+            </div>
+            <div class="chart-container">
+                <div id="alertTypeChart" style="width: 100%; height: 100%;"></div>
+            </div>
+            <div class="chart-container">
+                <div id="deviceAlertChart" style="width: 100%; height: 100%;"></div>
+            </div>
+            <div class="chart-container">
+                <div id="departmentStatsChart" style="width: 100%; height: 100%;"></div>
+            </div>
+            <div class="chart-container" style="grid-column: span 3;">
+                <div id="alertTimeChart" style="width: 100%; height: 100%;"></div>
+            </div>
+            
+            <!-- 处理时长分析图（跨越所有列） -->
+            <div class="chart-container" style="grid-column: span 3;">
+                <div id="processingTimeChart" style="width: 100%; height: 100%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chartInstances = new Map();
+        
+        // 自动刷新相关变量
+        let autoRefreshTimer = null;
+        let isAutoRefreshEnabled = true;
+        const REFRESH_INTERVAL = 10000; // 10秒，告警更紧急
+        
+        // 告警类型翻译映射
+        const alertTypeMap = {
+            'blood_oxygen': '血氧异常',
+            'stress': '压力异常', 
+            'blood_pressure': '血压异常',
+            'heart_rate': '心率异常',
+            'temperature': '温度异常',
+            'sleep': '睡眠异常',
+            'SOS': 'SOS告警',
+            'one_key_alarm': '一键告警',
+            'ONE_KEY_ALARM': '一键告警',
+            'falldwn': '跌倒告警',
+            'fall_down': '跌倒告警',
+            'FALL_DOWN': '跌倒告警'
+        };
+
+        // 获取翻译后的告警类型名称
+        function getAlertTypeName(type) {
+            return alertTypeMap[type] || type;
+        }
+        
+        // 全局变量存储原始数据和过滤状态
+        let originalAlertData = null;
+        let currentFilteredData = null;
+        let selectedAlerts = new Set();
+        
+        // 缓存传递过来的告警数据
+        let cachedAlertInfo = null;
+        
+        // 监听来自父窗口的数据
+        window.addEventListener('message', function(event) {
+            if (event.data.type === 'alertInfo') {
+                cachedAlertInfo = event.data.data;
+                console.log('接收到传递的告警数据:', cachedAlertInfo);
+                // 如果图表已初始化，直接更新数据
+                if (chartInstances.size > 0) {
+                    updateDashboardWithCachedData();
+                }
+            }
+        });
+        
+        // 使用缓存数据更新仪表板
+        function updateDashboardWithCachedData() {
+            if (!cachedAlertInfo) return;
+            
+            // 将缓存的数据转换为告警数据格式
+            const data = {
+                alerts: cachedAlertInfo.alerts || [],
+                alertLevelCount: cachedAlertInfo.alertLevelCount || {},
+                alertStatusCount: cachedAlertInfo.alertStatusCount || {},
+                alertTypeCount: cachedAlertInfo.alertTypeCount || {},
+                deviceAlertCount: cachedAlertInfo.deviceAlertCount || {},
+                departmentStats: cachedAlertInfo.departmentStats || {}
+            };
+            
+            // 保存原始数据
+            originalAlertData = data;
+            currentFilteredData = data;
+            
+            // 初始化告警类型过滤器
+            initAlertTypeFilter(data.alerts);
+            
+            // 初始化过滤状态显示
+            updateAlertFilterStatus('', '', '', data.alerts.length, data.alerts.length);
+            
+            // 显示数据
+            displayAlertTable(data.alerts);
+            updateAlertLevelChart(data.alertLevelCount);
+            updateAlertStatusChart(data.alertStatusCount);
+            updateAlertTypeChart(data.alertTypeCount);
+            updateDeviceAlertChart(data.deviceAlertCount);
+            updateDepartmentStatsChart(data.departmentStats);
+            updateAlertTimeChart(data.alerts);
+            updateProcessingTimeChart(data.alerts);
+            
+            // 清空选择状态
+            selectedAlerts.clear();
+            updateBatchActions();
+        }
+
+        // 面板切换功能
+        function togglePanel(panelId) {
+            const content = document.getElementById(panelId + 'Content');
+            const toggle = document.getElementById(panelId + 'Toggle');
+            
+            if (content.classList.contains('expanded')) {
+                content.classList.remove('expanded');
+                toggle.classList.remove('expanded');
+                toggle.textContent = '▼';
+            } else {
+                content.classList.add('expanded');
+                toggle.classList.add('expanded');
+                toggle.textContent = '▲';
+            }
+        }
+
+        // 全局暴露函数供HTML调用
+        window.togglePanel = togglePanel;
+
+        // 过滤函数
+        function filterAlerts(alerts, typeFilter, statusFilter, levelFilter) {
+            return alerts.filter(alert => {
+                const typeMatch = !typeFilter || alert.alert_type === typeFilter;
+                const statusMatch = !statusFilter || alert.alert_status === statusFilter;
+                const levelMatch = !levelFilter || alert.severity_level === levelFilter;
+                return typeMatch && statusMatch && levelMatch;
+            });
+        }
+
+        // 应用过滤器
+        function applyAlertFilters() {
+            if (!originalAlertData) return;
+
+            const typeFilter = document.getElementById('alertTypeFilter').value;
+            const statusFilter = document.getElementById('alertStatusFilter').value;
+            const levelFilter = document.getElementById('severityLevelFilter').value;
+
+            const filteredAlerts = filterAlerts(originalAlertData.alerts, typeFilter, statusFilter, levelFilter);
+            
+            // 更新过滤状态显示
+            updateAlertFilterStatus(typeFilter, statusFilter, levelFilter, filteredAlerts.length, originalAlertData.alerts.length);
+            
+            // 重新计算统计数据
+            const filteredData = {
+                ...originalAlertData,
+                alerts: filteredAlerts
+            };
+
+            // 重新计算各种统计
+            const alertLevelCount = {};
+            const alertStatusCount = {};
+            const alertTypeCount = {};
+            const deviceAlertCount = {};
+            
+            filteredAlerts.forEach(alert => {
+                alertLevelCount[alert.severity_level] = (alertLevelCount[alert.severity_level] || 0) + 1;
+                alertStatusCount[alert.alert_status] = (alertStatusCount[alert.alert_status] || 0) + 1;
+                alertTypeCount[alert.alert_type] = (alertTypeCount[alert.alert_type] || 0) + 1;
+                deviceAlertCount[alert.device_sn] = (deviceAlertCount[alert.device_sn] || 0) + 1;
+            });
+
+            filteredData.alertLevelCount = alertLevelCount;
+            filteredData.alertStatusCount = alertStatusCount;
+            filteredData.alertTypeCount = alertTypeCount;
+            filteredData.deviceAlertCount = deviceAlertCount;
+
+            currentFilteredData = filteredData;
+            updateDisplayWithFilteredData(filteredData);
+            
+            // 清空选择状态
+            selectedAlerts.clear();
+            updateBatchActions();
+        }
+
+        // 更新过滤状态显示
+        function updateAlertFilterStatus(typeFilter, statusFilter, levelFilter, filteredCount, totalCount) {
+            const statusElement = document.getElementById('alertFilterStatus');
+            let statusText = '';
+            
+            if (typeFilter || statusFilter || levelFilter) {
+                const filters = [];
+                if (typeFilter) filters.push(`类型:${getAlertTypeName(typeFilter)}`);
+                if (statusFilter) filters.push(`状态:${statusFilter === 'pending' ? '待处理' : '已响应'}`);
+                if (levelFilter) filters.push(`级别:${levelFilter === 'critical' ? '严重' : '中等'}`);
+                
+                statusText = `(已筛选: ${filters.join(', ')} | 显示 ${filteredCount}/${totalCount} 条)`;
+            } else {
+                statusText = `(共 ${totalCount} 条告警)`;
+            }
+            
+            statusElement.textContent = statusText;
+        }
+
+        // 重置过滤器
+        function resetAlertFilters() {
+            document.getElementById('alertTypeFilter').value = '';
+            document.getElementById('alertStatusFilter').value = '';
+            document.getElementById('severityLevelFilter').value = '';
+            
+            if (originalAlertData) {
+                currentFilteredData = originalAlertData;
+                updateAlertFilterStatus('', '', '', originalAlertData.alerts.length, originalAlertData.alerts.length);
+                updateDisplayWithFilteredData(originalAlertData);
+            }
+            
+            // 清空选择状态
+            selectedAlerts.clear();
+            updateBatchActions();
+        }
+
+        // 更新显示
+        function updateDisplayWithFilteredData(data) {
+            displayAlertTable(data.alerts);
+            updateAlertLevelChart(data.alertLevelCount);
+            updateAlertStatusChart(data.alertStatusCount);
+            updateAlertTypeChart(data.alertTypeCount);
+            updateDeviceAlertChart(data.deviceAlertCount);
+            updateDepartmentStatsChart(data.departmentStats);
+            updateAlertTimeChart(data.alerts);
+            updateProcessingTimeChart(data.alerts);
+        }
+
+        // 初始化告警类型过滤器选项
+        function initAlertTypeFilter(alerts) {
+            const typeFilter = document.getElementById('alertTypeFilter');
+            typeFilter.innerHTML = '<option value="">全部类型</option>';
+            
+            const uniqueTypes = [...new Set(alerts.map(alert => alert.alert_type))];
+            uniqueTypes.forEach(type => {
+                const option = document.createElement('option');
+                option.value = type;
+                option.textContent = getAlertTypeName(type);
+                typeFilter.appendChild(option);
+            });
+        }
+
+        async function fetchAlertInfo() {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const customerId = urlParams.get('customerId') || '1'; // 如果没有参数，默认使用 '1'
+                const deptId = urlParams.get('deptId') || ''; // 获取部门ID
+                const userId = urlParams.get('userId') || ''; // 获取用户ID
+
+                // 构建URL，使用 deptId 作为 orgId（如果存在），否则使用 customerId
+                const orgId = deptId || customerId;
+                let url = `/get_alerts_by_orgIdAndUserId?orgId=${orgId}`;
+                if (userId && userId !== 'all') url += `&userId=${userId}`;
+        
+                // 使用获取到的 customerId 作为 orgId
+                const response = await fetch(url);
+                
+                const result = await response.json();
+                if (result.success) {
+                    return result.data;
+                }
+                throw new Error('Failed to fetch alert data');
+            } catch (error) {
+                console.error('Error fetching alert data:', error);
+                return null;
+            }
+        }
+
+        function displayAlertTable(alerts) {
+            const container = document.getElementById('alertTable');
+            
+            // 按告警时间倒序排列（最新告警在前）
+            const sortedAlerts = [...alerts].sort((a, b) => {
+                const timeA = new Date(a.alert_timestamp || 0);
+                const timeB = new Date(b.alert_timestamp || 0);
+                return timeB - timeA; // 倒序排列
+            });
+            
+            const tableHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 40px;">
+                                <input type="checkbox" id="selectAllCheckbox" class="alert-checkbox" onchange="toggleAllSelection()">
+                            </th>
+                            <th>告警ID</th>
+                            <th>告警类型</th>
+                            <th>告警描述</th>
+                            <th>部门</th>
+                            <th>用户</th>
+                            <th>设备号</th>
+                            <th>状态</th>
+                            <th>级别</th>
+                            <th>时间</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${sortedAlerts.map(alert => `
+                            <tr>
+                                <td>
+                                    <input type="checkbox" class="alert-checkbox alert-item-checkbox" 
+                                           value="${alert.alert_id}" onchange="toggleAlertSelection('${alert.alert_id}')">
+                                </td>
+                                <td>${alert.alert_id}</td>
+                                <td>${getAlertTypeName(alert.alert_type)}</td>
+                                <td>${alert.alert_desc}</td>
+                                <td>${alert.org_name}</td>
+                                <td>${alert.user_name}</td>
+                                <td>${alert.device_sn}</td>
+                                <td>
+                                    <span class="status-badge status-${alert.alert_status}">
+                                        ${alert.alert_status === 'pending' ? '待处理' : '已响应'}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="level-badge level-${alert.severity_level}">
+                                        ${alert.severity_level === 'critical' ? '严重' : '中等'}
+                                    </span>
+                                </td>
+                                <td>${alert.alert_timestamp}</td>
+                                <td>
+                                    ${alert.alert_status === 'pending' ? 
+                                        `<button class="action-button" onclick="handleAlert('${alert.alert_id}')">一键处理</button>` :
+                                        '<span style="color: #4caf50;">已处理</span>'
+                                    }
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
+            container.innerHTML = tableHTML;
+            
+            // 更新选择状态
+            updateSelectionDisplay();
+        }
+
+        function handleAlert(alertId) {
+            console.log('handleAlert',alertId);
+            fetch(`./dealAlert?alertId=${alertId}`)
+              .then(response => response.json())
+              .then(data => {
+                if (data.success) {
+                  console.log('Alert processed:', data);
+                  showCustomAlert(data.message,()=>{
+                    location.reload();
+                  });
+                  //updateGeoJSONSources();
+                  location.reload(); // Refresh the page
+                } else {
+                  console.error('一键处理失败:', data.message);
+                  showCustomAlert('一键处理失败.请重试.',()=>{
+                    location.reload();
+                  });
+                }
+              })
+              .catch(error => {
+                console.error('一键处理失败:', error);
+                showCustomAlert('一键处理失败.请重试.',()=>{
+                  location.reload();
+                });
+              });
+          }
+          function showCustomAlert(msg, cb){
+            const d=document.createElement('div'),b=document.createElement('button');
+            d.style='position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99999;display:flex;align-items:center;justify-content:center;background:rgba(0,21,41,0.7)';
+            d.innerHTML=`<div style="background:rgba(10,24,48,0.98);border-radius:12px;box-shadow:0 0 24px #00e4ff44;padding:32px 38px;min-width:320px;max-width:420px;color:#fff;display:flex;flex-direction:column;align-items:center;"><div style="font-size:22px;margin-bottom:28px;">${msg}</div></div>`;
+            b.textContent='确定';b.style='margin:10px auto 0 auto;padding:8px 32px;font-size:18px;color:#00e4ff;background:rgba(0,0,0,0.2);border:1.5px solid #00e4ff;border-radius:6px;cursor:pointer;transition:.2s;';
+            b.onclick=()=>{d.remove();cb&&cb();};
+            d.querySelector('div').appendChild(b);
+            document.body.appendChild(d);
+          }
+        
+
+        function updateAlertLevelChart(data) {
+            const chart = chartInstances.get('alertLevelChart');
+            const levelMap = {
+                'critical': '严重',
+                'medium': '中等'
+            };
+            
+            chart.setOption({
+                title: {
+                    text: '告警级别分布',
+                    textStyle: { color: '#fff' }
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{b}: {c}条 ({d}%)'
+                },
+                legend: {
+                    orient: 'vertical',
+                    right: 10,
+                    top: 'center',
+                    textStyle: { color: '#fff' }
+                },
+                series: [{
+                    type: 'pie',
+                    radius: ['50%', '70%'],
+                    itemStyle: {
+                        borderRadius: 10,
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    },
+                    label: {
+                        show: true,
+                        formatter: '{b}: {c}条'
+                    },
+                    data: Object.entries(data).map(([key, value]) => ({
+                        name: levelMap[key],
+                        value: value,
+                        itemStyle: {
+                            color: key === 'critical' ? '#f44336' : '#ff9800'
+                        }
+                    }))
+                }]
+            });
+        }
+
+        function updateAlertStatusChart(data) {
+            const chart = chartInstances.get('alertStatusChart');
+            const statusMap = {
+                'pending': '待处理',
+                'responded': '已响应'
+            };
+
+            chart.setOption({
+                title: {
+                    text: '告警状态分布',
+                    textStyle: { color: '#fff' }
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{b}: {c}条 ({d}%)'
+                },
+                legend: {
+                    orient: 'vertical',
+                    right: 10,
+                    top: 'center',
+                    textStyle: { color: '#fff' }
+                },
+                series: [{
+                    type: 'pie',
+                    radius: ['50%', '70%'],
+                    itemStyle: {
+                        borderRadius: 10,
+                        borderColor: '#fff',
+                        borderWidth: 2
+                    },
+                    label: {
+                        show: true,
+                        formatter: '{b}: {c}条'
+                    },
+                    data: Object.entries(data).map(([key, value]) => ({
+                        name: statusMap[key],
+                        value: value,
+                        itemStyle: {
+                            color: key === 'pending' ? '#ff9800' : '#4caf50'
+                        }
+                    }))
+                }]
+            });
+        }
+
+        function updateAlertTypeChart(data) {
+            const chart = chartInstances.get('alertTypeChart');
+            const types = Object.entries(data).sort((a, b) => b[1] - a[1]);
+
+            chart.setOption({
+                title: {
+                    text: '告警类型分布',
+                    textStyle: { color: '#fff' }
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: types.map(t => getAlertTypeName(t[0])),
+                    axisLabel: {
+                        color: '#fff',
+                        rotate: 45
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: { color: '#fff' }
+                },
+                series: [{
+                    type: 'bar',
+                    data: types.map(t => ({
+                        value: t[1],
+                        itemStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: '#83bff6' },
+                                { offset: 0.5, color: '#188df0' },
+                                { offset: 1, color: '#188df0' }
+                            ])
+                        }
+                    })),
+                    label: {
+                        show: true,
+                        position: 'top',
+                        color: '#fff'
+                    }
+                }]
+            });
+        }
+
+        function updateDeviceAlertChart(data) {
+            const chart = chartInstances.get('deviceAlertChart');
+            const devices = Object.entries(data);
+
+            chart.setOption({
+                title: {
+                    text: '设备告警数量',
+                    textStyle: { color: '#fff' }
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: devices.map(d => d[0]),
+                    axisLabel: {
+                        color: '#fff',
+                        rotate: 45
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: { color: '#fff' }
+                },
+                series: [{
+                    type: 'bar',
+                    data: devices.map(d => ({
+                        value: d[1],
+                        itemStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: '#ff9800' },
+                                { offset: 1, color: '#f44336' }
+                            ])
+                        }
+                    })),
+                    label: {
+                        show: true,
+                        position: 'top',
+                        color: '#fff'
+                    }
+                }]
+            });
+        }
+
+        function updateDepartmentStatsChart(data) {
+            const chart = chartInstances.get('departmentStatsChart');
+            const departments = Object.values(data);
+
+            chart.setOption({
+                title: {
+                    text: '部门告警统计',
+                    textStyle: { color: '#fff' }
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: { type: 'shadow' }
+                },
+                legend: {
+                    data: ['总告警', '严重告警', '中等告警', '待处理', '已响应'],
+                    textStyle: { color: '#fff' },
+                    top: 25
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: departments.map(d => d.name),
+                    axisLabel: { color: '#fff' }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: { color: '#fff' }
+                },
+                series: [
+                    {
+                        name: '总告警',
+                        type: 'bar',
+                        stack: 'total',
+                        label: { show: true },
+                        emphasis: { focus: 'series' },
+                        data: departments.map(d => d.total_alerts)
+                    },
+                    {
+                        name: '严重告警',
+                        type: 'bar',
+                        stack: 'severity',
+                        label: { show: true },
+                        emphasis: { focus: 'series' },
+                        data: departments.map(d => d.severity_stats.critical || 0)
+                    },
+                    {
+                        name: '中等告警',
+                        type: 'bar',
+                        stack: 'severity',
+                        label: { show: true },
+                        emphasis: { focus: 'series' },
+                        data: departments.map(d => d.severity_stats.medium || 0)
+                    },
+                    {
+                        name: '待处理',
+                        type: 'bar',
+                        stack: 'status',
+                        label: { show: true },
+                        emphasis: { focus: 'series' },
+                        data: departments.map(d => d.status_stats.pending || 0)
+                    },
+                    {
+                        name: '已响应',
+                        type: 'bar',
+                        stack: 'status',
+                        label: { show: true },
+                        emphasis: { focus: 'series' },
+                        data: departments.map(d => d.status_stats.responded || 0)
+                    }
+                ],
+                color: ['#91cc75', '#f44336', '#ff9800', '#fac858', '#73c0de']
+            });
+        }
+
+        function updateAlertTimeChart(alerts) {
+            const chart = chartInstances.get('alertTimeChart');
+            
+            // 统计告警时间和响应时间分布
+            const alertTimeData = {};
+            const responseTimeData = {};
+            const processingTimes = [];
+            
+            alerts.forEach(alert => {
+                // 统计告警时间分布（所有告警）
+                const alertHour = new Date(alert.alert_timestamp).getHours();
+                alertTimeData[alertHour] = (alertTimeData[alertHour] || 0) + 1;
+                
+                // 统计响应时间分布（仅已处理的告警）
+                if (alert.responded_time && 
+                    alert.responded_time !== null && 
+                    alert.responded_time !== 'null' && 
+                    alert.responded_time !== '' &&
+                    alert.responded_time !== undefined) {
+                    
+                    const responseHour = new Date(alert.responded_time).getHours();
+                    responseTimeData[responseHour] = (responseTimeData[responseHour] || 0) + 1;
+                    
+                    // 计算处理时长
+                    const alertTime = new Date(alert.alert_timestamp);
+                    const responseTime = new Date(alert.responded_time);
+                    const processingHours = (responseTime - alertTime) / (1000 * 60 * 60);
+                    
+                    if (processingHours >= 0 && !isNaN(processingHours)) {
+                        processingTimes.push({
+                            alertId: alert.alert_id,
+                            alertTime: alertTime,
+                            responseTime: responseTime,
+                            processingHours: processingHours.toFixed(2),
+                            alertType: alert.alert_type
+                        });
+                    }
+                }
+            });
+
+            const hours = Array.from({length: 24}, (_, i) => i);
+            const alertData = hours.map(hour => alertTimeData[hour] || 0);
+            const responseData = hours.map(hour => responseTimeData[hour] || 0);
+
+            // 计算平均处理时长
+            const avgProcessingTime = processingTimes.length > 0 
+                ? (processingTimes.reduce((sum, item) => sum + parseFloat(item.processingHours), 0) / processingTimes.length).toFixed(2)
+                : 0;
+
+            // 检查是否有响应数据来决定显示内容
+            const hasResponseData = processingTimes.length > 0;
+
+            chart.setOption({
+                title: {
+                    text: '告警时间分布与处理分析',
+                    subtext: hasResponseData 
+                        ? `平均处理时长: ${avgProcessingTime}小时 | 已处理: ${processingTimes.length}/${alerts.length}条`
+                        : `共 ${alerts.length} 条告警 | 暂无已处理告警`,
+                    textStyle: { color: '#fff' },
+                    subtextStyle: { color: hasResponseData ? '#00e4ff' : '#ff9800', fontSize: 12 }
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    formatter: function(params) {
+                        let result = `${params[0].name}<br/>`;
+                        params.forEach(param => {
+                            if (param.value > 0) { // 只显示有数据的系列
+                                result += `${param.seriesName}: ${param.value}条<br/>`;
+                            }
+                        });
+                        
+                        // 显示该时间段的处理时长信息
+                        if (hasResponseData) {
+                            const hour = parseInt(params[0].name.split(':')[0]);
+                            const hourlyProcessing = processingTimes.filter(item => 
+                                item.alertTime.getHours() === hour || item.responseTime.getHours() === hour
+                            );
+                            
+                            if (hourlyProcessing.length > 0) {
+                                const avgHourly = (hourlyProcessing.reduce((sum, item) => 
+                                    sum + parseFloat(item.processingHours), 0) / hourlyProcessing.length).toFixed(2);
+                                result += `该时段平均处理时长: ${avgHourly}小时`;
+                            }
+                        }
+                        
+                        return result;
+                    }
+                },
+                legend: {
+                    data: hasResponseData ? ['告警发生时间', '告警响应时间'] : ['告警发生时间'],
+                    textStyle: { color: '#fff' },
+                    top: 35
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: hours.map(h => `${h}:00`),
+                    axisLabel: {
+                        color: '#fff',
+                        interval: 1,
+                        rotate: 45
+                    },
+                    axisLine: {
+                        lineStyle: { color: 'rgba(0, 228, 255, 0.3)' }
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '告警数量',
+                    nameTextStyle: { color: '#fff' },
+                    axisLabel: { color: '#fff' },
+                    splitLine: {
+                        lineStyle: { color: 'rgba(0, 228, 255, 0.1)' }
+                    }
+                },
+                series: hasResponseData ? [
+                    {
+                        name: '告警发生时间',
+                    type: 'line',
+                    smooth: true,
+                        data: alertData,
+                    areaStyle: {
+                        color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: 'rgba(244, 67, 54, 0.3)' },
+                                { offset: 1, color: 'rgba(244, 67, 54, 0.1)' }
+                        ])
+                    },
+                    lineStyle: {
+                            color: '#f44336',
+                        width: 2
+                    },
+                    itemStyle: {
+                            color: '#f44336',
+                        borderWidth: 2
+                        }
+                    },
+                    {
+                        name: '告警响应时间',
+                        type: 'line',
+                        smooth: true,
+                        data: responseData,
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: 'rgba(76, 175, 80, 0.3)' },
+                                { offset: 1, color: 'rgba(76, 175, 80, 0.1)' }
+                            ])
+                        },
+                        lineStyle: {
+                            color: '#4caf50',
+                            width: 2
+                        },
+                        itemStyle: {
+                            color: '#4caf50',
+                            borderWidth: 2
+                        }
+                    }
+                ] : [
+                    {
+                        name: '告警发生时间',
+                        type: 'line',
+                        smooth: true,
+                        data: alertData,
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                { offset: 0, color: 'rgba(244, 67, 54, 0.3)' },
+                                { offset: 1, color: 'rgba(244, 67, 54, 0.1)' }
+                            ])
+                        },
+                        lineStyle: {
+                            color: '#f44336',
+                            width: 2
+                        },
+                        itemStyle: {
+                            color: '#f44336',
+                            borderWidth: 2
+                        }
+                    }
+                ]
+            });
+        }
+
+        function updateProcessingTimeChart(alerts) {
+            const chart = chartInstances.get('processingTimeChart');
+            
+            // 计算处理时长数据，responded_time字段存在但可能为空
+            const processingData = [];
+            const typeProcessingStats = {};
+            
+            alerts.forEach(alert => {
+                // 检查是否有有效的响应时间
+                if (alert.responded_time && 
+                    alert.responded_time !== null && 
+                    alert.responded_time !== 'null' && 
+                    alert.responded_time !== '' &&
+                    alert.responded_time !== undefined) {
+                    
+                    const alertTime = new Date(alert.alert_timestamp);
+                    const responseTime = new Date(alert.responded_time);
+                    const processingHours = (responseTime - alertTime) / (1000 * 60 * 60);
+                    
+                    if (processingHours >= 0 && !isNaN(processingHours)) { // 确保时间计算有效
+                        processingData.push({
+                            alertId: alert.alert_id,
+                            alertType: alert.alert_type,
+                            severityLevel: alert.severity_level,
+                            processingHours: processingHours,
+                            alertTime: alertTime,
+                            responseTime: responseTime
+                        });
+                        
+                        // 按类型统计
+                        if (!typeProcessingStats[alert.alert_type]) {
+                            typeProcessingStats[alert.alert_type] = [];
+                        }
+                        typeProcessingStats[alert.alert_type].push(processingHours);
+                    }
+                }
+            });
+            
+            // 如果没有处理时长数据，显示提示信息
+            if (processingData.length === 0) {
+                chart.setOption({
+                    title: {
+                        text: '告警处理时长分析',
+                        subtext: `暂无已处理告警数据 | 待处理: ${alerts.length}条`,
+                        textStyle: { color: '#fff' },
+                        subtextStyle: { color: '#ff9800', fontSize: 12 }
+                    },
+                    graphic: {
+                        type: 'text',
+                        left: 'center',
+                        top: 'middle',
+                        style: {
+                            text: '暂无已处理的告警数据\n请处理告警后查看时长分析',
+                            textAlign: 'center',
+                            fill: '#fff',
+                            fontSize: 16
+                        }
+                    },
+                    xAxis: { show: false },
+                    yAxis: { show: false },
+                    series: []
+                });
+                return;
+            }
+            
+            // 按处理时长排序并取前20条作为散点图数据
+            const sortedData = processingData.sort((a, b) => b.processingHours - a.processingHours).slice(0, 20);
+            
+            // 计算各类型平均处理时长
+            const avgByType = Object.entries(typeProcessingStats).map(([type, times]) => ({
+                type: type,
+                avgTime: (times.reduce((sum, time) => sum + time, 0) / times.length).toFixed(2),
+                count: times.length,
+                maxTime: Math.max(...times).toFixed(2),
+                minTime: Math.min(...times).toFixed(2)
+            })).sort((a, b) => parseFloat(b.avgTime) - parseFloat(a.avgTime));
+
+            chart.setOption({
+                title: {
+                    text: '告警处理时长分析',
+                    subtext: `已处理: ${processingData.length}条 | 待处理: ${alerts.length - processingData.length}条`,
+                    textStyle: { color: '#fff' },
+                    subtextStyle: { color: '#00e4ff', fontSize: 12 }
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        if (params.componentType === 'series') {
+                            if (params.seriesName === '处理时长分布') {
+                                const data = sortedData[params.dataIndex];
+                                return `告警ID: ${data.alertId}<br/>` +
+                                       `告警类型: ${getAlertTypeName(data.alertType)}<br/>` +
+                                       `严重级别: ${data.severityLevel === 'critical' ? '严重' : '中等'}<br/>` +
+                                       `处理时长: ${data.processingHours.toFixed(2)}小时<br/>` +
+                                       `告警时间: ${data.alertTime.toLocaleString()}<br/>` +
+                                       `响应时间: ${data.responseTime.toLocaleString()}`;
+                            } else {
+                                const data = avgByType[params.dataIndex];
+                                return `告警类型: ${getAlertTypeName(data.type)}<br/>` +
+                                       `平均处理时长: ${data.avgTime}小时<br/>` +
+                                       `处理数量: ${data.count}条<br/>` +
+                                       `最长时长: ${data.maxTime}小时<br/>` +
+                                       `最短时长: ${data.minTime}小时`;
+                            }
+                        }
+                        return '';
+                    }
+                },
+                legend: {
+                    data: ['处理时长分布', '类型平均时长'],
+                    textStyle: { color: '#fff' },
+                    top: 30
+                },
+                grid: [
+                    {
+                        left: '8%',
+                        right: '55%',
+                        top: '18%',
+                        bottom: '15%'
+                    },
+                    {
+                        left: '60%',
+                        right: '8%',
+                        top: '18%',
+                        bottom: '15%'
+                    }
+                ],
+                xAxis: [
+                    {
+                        type: 'category',
+                        data: sortedData.map((_, index) => `${index + 1}`),
+                        axisLabel: {
+                            color: '#fff',
+                            fontSize: 10,
+                            interval: 0
+                        },
+                        name: '告警序号',
+                        nameTextStyle: { color: '#fff', fontSize: 11 },
+                        nameLocation: 'middle',
+                        nameGap: 25,
+                        gridIndex: 0
+                    },
+                    {
+                        type: 'category',
+                        data: avgByType.map(item => {
+                            const translatedType = getAlertTypeName(item.type);
+                            return translatedType.length > 6 ? translatedType.substring(0, 6) + '...' : translatedType;
+                        }),
+                        axisLabel: {
+                            color: '#fff',
+                            fontSize: 10,
+                            rotate: 30,
+                            interval: 0
+                        },
+                        name: '告警类型',
+                        nameTextStyle: { color: '#fff', fontSize: 11 },
+                        nameLocation: 'middle',
+                        nameGap: 35,
+                        gridIndex: 1
+                    }
+                ],
+                yAxis: [
+                    {
+                        type: 'value',
+                        name: '处理时长(小时)',
+                        nameTextStyle: { color: '#fff', fontSize: 11 },
+                        axisLabel: { 
+                            color: '#fff',
+                            fontSize: 10
+                        },
+                        splitLine: {
+                            lineStyle: { color: 'rgba(0, 228, 255, 0.1)' }
+                        },
+                        gridIndex: 0
+                    },
+                    {
+                        type: 'value',
+                        name: '平均时长(小时)',
+                        nameTextStyle: { color: '#fff', fontSize: 11 },
+                        axisLabel: { 
+                            color: '#fff',
+                            fontSize: 10
+                        },
+                        splitLine: {
+                            lineStyle: { color: 'rgba(0, 228, 255, 0.1)' }
+                        },
+                        gridIndex: 1
+                    }
+                ],
+                series: [
+                    {
+                        name: '处理时长分布',
+                        type: 'scatter',
+                        data: sortedData.map(item => ({
+                            value: item.processingHours,
+                            itemStyle: {
+                                color: item.severityLevel === 'critical' ? '#f44336' : '#ff9800'
+                            }
+                        })),
+                        symbolSize: function(value) {
+                            return Math.max(8, Math.min(15, value + 5));
+                        },
+                        xAxisIndex: 0,
+                        yAxisIndex: 0
+                    },
+                    {
+                        name: '类型平均时长',
+                        type: 'bar',
+                        data: avgByType.map(item => ({
+                            value: parseFloat(item.avgTime),
+                            itemStyle: {
+                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                                    { offset: 0, color: '#00e4ff' },
+                                    { offset: 1, color: '#0066cc' }
+                                ])
+                            }
+                        })),
+                        label: {
+                            show: true,
+                            position: 'top',
+                            color: '#fff',
+                            fontSize: 10,
+                            formatter: '{c}h'
+                        },
+                        barWidth: '60%',
+                        xAxisIndex: 1,
+                        yAxisIndex: 1
+                    }
+                ]
+            });
+        }
+
+        async function updateDashboard(forceRefresh = false) {
+            // 如果强制刷新或没有缓存数据，调用接口获取
+            if (forceRefresh || !cachedAlertInfo) {
+                console.log('🔄 调用接口获取最新告警数据...');
+                const data = await fetchAlertInfo();
+                if (data) {
+                    // 保存原始数据
+                    originalAlertData = data;
+                    currentFilteredData = data;
+                    
+                    // 初始化告警类型过滤器
+                    initAlertTypeFilter(data.alerts);
+                    
+                    // 初始化过滤状态显示
+                    updateAlertFilterStatus('', '', '', data.alerts.length, data.alerts.length);
+                    
+                    // 显示数据
+                    displayAlertTable(data.alerts);
+                    updateAlertLevelChart(data.alertLevelCount);
+                    updateAlertStatusChart(data.alertStatusCount);
+                    updateAlertTypeChart(data.alertTypeCount);
+                    updateDeviceAlertChart(data.deviceAlertCount);
+                    updateDepartmentStatsChart(data.departmentStats);
+                    updateAlertTimeChart(data.alerts);
+                    updateProcessingTimeChart(data.alerts);
+                    
+                    // 清空选择状态
+                    selectedAlerts.clear();
+                    updateBatchActions();
+                }
+                return;
+            }
+            
+            // 只有首次加载且有缓存数据时才使用缓存
+            console.log('✅ 使用传递的缓存数据，避免重复接口调用');
+            updateDashboardWithCachedData();
+        }
+
+        function initCharts() {
+            const chartIds = [
+                'alertLevelChart', 'alertStatusChart', 'alertTypeChart',
+                'deviceAlertChart', 'departmentStatsChart', 'alertTimeChart', 'processingTimeChart'
+            ];
+            
+            chartIds.forEach(id => {
+                chartInstances.set(id, echarts.init(document.getElementById(id)));
+            });
+        }
+
+        async function initDashboard() {
+            initCharts();
+            
+            // 等待一小段时间，看是否有缓存数据传递过来
+            setTimeout(async () => {
+                if (cachedAlertInfo) {
+                    console.log('✅ 使用传递的缓存数据，避免重复接口调用');
+                } else {
+                    console.log('❌ 未接收到缓存数据，将调用接口获取');
+                }
+                
+                await updateDashboard();
+                
+                // 启动自动刷新
+                if (isAutoRefreshEnabled) {
+                    startAutoRefresh();
+                }
+            }, 1000); // 等待1秒让postMessage有时间传递数据
+
+            window.addEventListener('resize', debounce(() => {
+                chartInstances.forEach(chart => chart.resize());
+            }, 250));
+        }
+
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(this, args), wait);
+            };
+        }
+
+        // 手动刷新功能
+        function manualRefresh() {
+            const btn = document.getElementById('refreshBtn');
+            const btnIcon = btn.querySelector('.btn-icon');
+            const btnText = btn.querySelector('span:last-child');
+            
+            btnText.textContent = '刷新中...';
+            btnIcon.style.animation = 'spin 1s linear infinite';
+            btn.disabled = true;
+            
+            console.log('🔄 手动刷新告警数据...');
+            updateDashboard(true).then(() => {
+                btnText.textContent = '手动刷新';
+                btnIcon.style.animation = '';
+                btn.disabled = false;
+                console.log('✅ 手动刷新完成');
+            }).catch(error => {
+                console.error('❌ 手动刷新失败:', error);
+                btnText.textContent = '刷新失败';
+                btnIcon.textContent = '❌';
+                setTimeout(() => {
+                    btnText.textContent = '手动刷新';
+                    btnIcon.textContent = '🔄';
+                    btnIcon.style.animation = '';
+                    btn.disabled = false;
+                }, 2000);
+            });
+        }
+        
+        // 切换自动刷新状态
+        function toggleAutoRefresh() {
+            const btn = document.getElementById('toggleAutoRefresh');
+            const status = document.getElementById('refreshStatus');
+            const statusDot = document.getElementById('statusDot');
+            const btnIcon = document.getElementById('autoRefreshIcon');
+            const btnText = document.getElementById('autoRefreshText');
+            
+            if (isAutoRefreshEnabled) {
+                // 关闭自动刷新
+                clearInterval(autoRefreshTimer);
+                autoRefreshTimer = null;
+                isAutoRefreshEnabled = false;
+                btnIcon.textContent = '▶️';
+                btnText.textContent = '启动监控';
+                status.textContent = '监控已暂停';
+                statusDot.classList.add('paused');
+                console.log('❌ 自动刷新已关闭');
+            } else {
+                // 开启自动刷新
+                startAutoRefresh();
+                isAutoRefreshEnabled = true;
+                btnIcon.textContent = '⏸️';
+                btnText.textContent = '暂停自动';
+                status.textContent = '实时监控中';
+                statusDot.classList.remove('paused');
+                console.log('✅ 自动刷新已开启');
+            }
+        }
+        
+        // 启动自动刷新
+        function startAutoRefresh() {
+            if (autoRefreshTimer) {
+                clearInterval(autoRefreshTimer);
+            }
+            
+            autoRefreshTimer = setInterval(() => {
+                if (isAutoRefreshEnabled) {
+                    console.log('🔄 自动刷新告警数据...');
+                    updateDashboard(true).catch(error => {
+                        console.error('❌ 自动刷新失败:', error);
+                    });
+                }
+            }, REFRESH_INTERVAL);
+        }
+        
+        // 停止自动刷新
+        function stopAutoRefresh() {
+            if (autoRefreshTimer) {
+                clearInterval(autoRefreshTimer);
+                autoRefreshTimer = null;
+            }
+        }
+        
+        // 全局暴露刷新相关函数
+        window.manualRefresh = manualRefresh;
+        window.toggleAutoRefresh = toggleAutoRefresh;
+
+        document.addEventListener('DOMContentLoaded', initDashboard);
+
+        // 初始化事件监听器
+        document.addEventListener('DOMContentLoaded', function() {
+            // 添加过滤器事件监听器
+            document.getElementById('alertTypeFilter').addEventListener('change', applyAlertFilters);
+            document.getElementById('alertStatusFilter').addEventListener('change', applyAlertFilters);
+            document.getElementById('severityLevelFilter').addEventListener('change', applyAlertFilters);
+            document.getElementById('resetAlertFilter').addEventListener('click', resetAlertFilters);
+            
+            // 添加批处理按钮事件监听器
+            document.getElementById('batchProcessBtn').addEventListener('click', batchProcessAlerts);
+            document.getElementById('selectAllBtn').addEventListener('click', selectAllAlerts);
+            document.getElementById('clearSelectionBtn').addEventListener('click', clearSelection);
+        });
+
+        // 多选功能相关函数
+        function toggleAlertSelection(alertId) {
+            if (selectedAlerts.has(alertId)) {
+                selectedAlerts.delete(alertId);
+            } else {
+                selectedAlerts.add(alertId);
+            }
+            updateBatchActions();
+            updateSelectionDisplay();
+        }
+
+        function toggleAllSelection() {
+            const checkboxes = document.querySelectorAll('.alert-item-checkbox');
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            
+            if (selectAllCheckbox.checked) {
+                checkboxes.forEach(checkbox => {
+                    selectedAlerts.add(checkbox.value);
+                    checkbox.checked = true;
+                });
+            } else {
+                selectedAlerts.clear();
+                checkboxes.forEach(checkbox => {
+                    checkbox.checked = false;
+                });
+            }
+            updateBatchActions();
+        }
+
+        function updateBatchActions() {
+            const batchActions = document.getElementById('batchActions');
+            const selectedCount = document.getElementById('selectedCount');
+            const batchProcessBtn = document.getElementById('batchProcessBtn');
+            
+            selectedCount.textContent = selectedAlerts.size;
+            
+            if (selectedAlerts.size > 0) {
+                batchActions.classList.add('show');
+                batchProcessBtn.disabled = false;
+            } else {
+                batchActions.classList.remove('show');
+                batchProcessBtn.disabled = true;
+            }
+        }
+
+        function updateSelectionDisplay() {
+            const checkboxes = document.querySelectorAll('.alert-item-checkbox');
+            const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+            
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = selectedAlerts.has(checkbox.value);
+            });
+            
+            // 更新全选状态
+            const checkedCount = Array.from(checkboxes).filter(cb => cb.checked).length;
+            if (checkedCount === 0) {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = false;
+            } else if (checkedCount === checkboxes.length) {
+                selectAllCheckbox.checked = true;
+                selectAllCheckbox.indeterminate = false;
+            } else {
+                selectAllCheckbox.checked = false;
+                selectAllCheckbox.indeterminate = true;
+            }
+        }
+
+        function selectAllAlerts() {
+            const checkboxes = document.querySelectorAll('.alert-item-checkbox');
+            checkboxes.forEach(checkbox => {
+                selectedAlerts.add(checkbox.value);
+                checkbox.checked = true;
+            });
+            updateBatchActions();
+            updateSelectionDisplay();
+        }
+
+        function clearSelection() {
+            selectedAlerts.clear();
+            const checkboxes = document.querySelectorAll('.alert-item-checkbox');
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+            document.getElementById('selectAllCheckbox').checked = false;
+            updateBatchActions();
+        }
+
+        // 批量处理告警
+        async function batchProcessAlerts() {
+            if (selectedAlerts.size === 0) {
+                showCustomAlert('请先选择要处理的告警', null);
+                return;
+            }
+
+            const alertIds = Array.from(selectedAlerts);
+            const batchProcessBtn = document.getElementById('batchProcessBtn');
+            
+            try {
+                batchProcessBtn.disabled = true;
+                batchProcessBtn.textContent = '处理中...';
+
+                const response = await fetch('./batchDealAlert', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        alertIds: alertIds
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    showCustomAlert(`成功处理 ${alertIds.length} 条告警！`, () => {
+                        location.reload();
+                    });
+                } else {
+                    showCustomAlert(data.message || '批量处理失败，请重试', null);
+                }
+            } catch (error) {
+                console.error('批量处理失败:', error);
+                showCustomAlert('批量处理失败，请重试', null);
+            } finally {
+                batchProcessBtn.disabled = false;
+                batchProcessBtn.textContent = '批量处理';
+            }
+        }
+
+        // 暴露函数供HTML调用
+        window.toggleAlertSelection = toggleAlertSelection;
+        window.toggleAllSelection = toggleAllSelection;
+    </script>
+</body>
+</html> 

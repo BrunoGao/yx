@@ -1,0 +1,11 @@
+{
+    "packages": [
+        {
+            "moduleType": "entry",
+            "installationFree": false,
+            "moduleName": "entry",
+            "packageName": "entry-release-rich",
+            "packageSize": "1040236"
+        }
+    ]
+}

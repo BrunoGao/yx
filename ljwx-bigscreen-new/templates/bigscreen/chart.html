@@ -1,0 +1,1337 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>数据统计</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+    <style>
+      /* 标签页样式 */
+      .tabs {
+        display: flex;
+        justify-content: center;
+        gap: 20px;
+        margin-bottom: 20px;
+        padding: 20px;
+      }
+
+      .tab {
+        padding: 10px 20px;
+        background: #2a2a2a;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: all 0.3s;
+      }
+
+      .tab.active {
+        background: #1890ff;
+      }
+
+      .tab:hover {
+        background: #1890ff;
+      }
+
+      /* 图表容器样式 */
+      .charts-container {
+        display: none;
+      }
+
+      .charts-container.active {
+        display: block;
+      }
+
+      .chart-row {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+
+      .pie-chart {
+        width: 48%;
+        height: 300px;
+        background: #1a1a1a;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      }
+
+      .dimension-selector {
+        margin-bottom: 20px;
+        text-align: center;
+      }
+
+      .dimension-selector button {
+        padding: 8px 16px;
+        margin: 0 4px;
+        border: 1px solid #ddd;
+        background: #fff;
+        cursor: pointer;
+      }
+
+      .dimension-selector button.active {
+        background: #1890ff;
+        color: #fff;
+        border-color: #1890ff;
+      }
+
+      #healthChartsContainer {
+        padding: 20px;
+        background: #fff;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      }
+    </style>
+  </head>
+  <body style="background: #141414; margin: 0; padding: 20px;">
+    <!-- 标签页按钮 -->
+    <div class="tabs">
+      <button class="tab active" data-type="alert">告警统计</button>
+      <button class="tab" data-type="message">消息统计</button>
+      <button class="tab" data-type="device">设备统计</button>
+      <button class="tab" data-type="health">健康数据统计</button>
+      <button class="tab" data-type="user">用户统计</button>
+    </div>
+
+    <!-- 告警统计图表 -->
+    <div id="alertCharts" class="charts-container active">
+      <div id="alertLineChart" style="width: 100%; height: 400px;"></div>
+      <div class="chart-row">
+        <div id="deptPieChart" class="pie-chart"></div>
+        <div id="typePieChart" class="pie-chart"></div>
+      </div>
+      <div class="chart-row">
+        <div id="statusPieChart" class="pie-chart"></div>
+        <div id="levelPieChart" class="pie-chart"></div>
+      </div>
+    </div>
+
+    <!-- 消息统计图表 -->
+    <div id="messageCharts" class="charts-container">
+      <div id="messageLineChart" style="width: 100%; height: 400px;"></div>
+      <div class="chart-row">
+        <div id="messageDeptChart" class="pie-chart"></div>
+        <div id="messageTypeChart" class="pie-chart"></div>
+      </div>
+      <div class="chart-row">
+        <div id="messageStatusChart" class="pie-chart"></div>
+        <div id="messageCategoryChart" class="pie-chart"></div>
+      </div>
+    </div>
+
+    <!-- 设备统计图表 -->
+    <div id="deviceCharts" class="charts-container">
+      <div class="chart-row">
+        <div id="deviceDeptChart" class="pie-chart"></div>
+        <div id="deviceStatusChart" class="pie-chart"></div>
+      </div>
+      <div class="chart-row">
+        <div id="deviceChargeChart" class="pie-chart"></div>
+        <div id="deviceWearChart" class="pie-chart"></div>
+      </div>
+    </div>
+
+    <!-- 健康数据统计图表 -->
+    <div id="healthCharts" class="charts-container">
+      <div class="dimension-selector">
+        <button class="active" data-dimension="day">日</button>
+        <button data-dimension="week">周</button>
+        <button data-dimension="month">月</button>
+        <button data-dimension="year">年</button>
+      </div>
+      <div id="heartRateChart" style="width: 100%; height: 300px; margin-bottom: 20px;"></div>
+      <div class="chart-row">
+        <div id="pressureChart" class="pie-chart"></div>
+        <div id="oxygenChart" class="pie-chart"></div>
+      </div>
+      <div class="chart-row">
+        <div id="temperatureChart" class="pie-chart"></div>
+        <div id="stressChart" class="pie-chart"></div>
+      </div>
+      <div id="activityChart" style="width: 100%; height: 300px; margin-top: 20px;"></div>
+    </div>
+
+    <!-- 用户统计图表 -->
+    <div id="userCharts" class="charts-container">
+      <div class="chart-row">
+        <div id="userDeptChart" class="pie-chart"></div>
+        <div id="userDeviceChart" class="pie-chart"></div>
+      </div>
+      <div id="userGrowthChart" style="width: 100%; height: 400px;"></div>
+    </div>
+
+    <script>
+      // 标签页切换逻辑
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          // 更新标签页状态
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          tab.classList.add('active');
+          
+          // 更新图表容器显示状态
+          document.querySelectorAll('.charts-container').forEach(container => {
+            container.classList.remove('active');
+          });
+          document.getElementById(`${tab.dataset.type}Charts`).classList.add('active');
+          
+          // 加载相应的数据
+          switch(tab.dataset.type) {
+            case 'alert':
+              fetchAlertData();
+              break;
+            case 'message':
+              fetchMessageData();
+              break;
+            case 'device':
+              fetchDeviceData();
+              break;
+            case 'health':
+              fetchHealthData('day'); // 默认加载日维度数据
+              break;
+            case 'user':
+              fetchUserStats();
+              break;
+          }
+        });
+      });
+
+      // 获取 URL 参数的函数
+      function getUrlParam(param) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(param);
+      }
+
+      // 获取 customerId
+      const customerId = getUrlParam('customerId');
+
+      // 通用的饼图配置生成函数
+      function createPieOption(title, data, colors) {
+        return {
+          backgroundColor: '#1a1a1a',
+                            title: {
+            text: title,
+            left: 'center',
+            top: 20,
+                                textStyle: {
+              color: '#fff',
+              fontSize: 16
+                                }
+                            },
+                            tooltip: {
+            trigger: 'item',
+            formatter: '{b}: {c} ({d}%)'
+          },
+          legend: {
+            orient: 'vertical',
+            right: '5%',
+            top: 'middle',
+            textStyle: { color: '#fff' }
+          },
+          series: [{
+            type: 'pie',
+            radius: ['40%', '70%'],
+            center: ['40%', '50%'],
+            data: data.map((item, index) => ({
+              ...item,
+              itemStyle: { color: colors[index % colors.length] }
+            })),
+            label: {
+              show: true,
+              color: '#fff',
+              formatter: '{b}: {c}'
+            },
+            emphasis: {
+              label: {
+                show: true,
+                fontSize: '16',
+                fontWeight: 'bold'
+              }
+            }
+          }]
+        };
+      }
+
+      // 消息数据处理和图表更新
+      function fetchMessageData() {
+        fetch(`./get_messages_by_orgIdAndUserId?orgId=${customerId}`)
+          .then(response => response.json())
+          .then(result => {
+            if (result.success) {
+              const data = result.data;
+              
+              // 更新消息趋势图
+              updateMessageTrendChart(data.messages);
+              
+              // 部门消息分布
+              updateChart('messageDeptChart', {
+                title: '部门消息分布',
+                data: Object.entries(data.departmentMessageCount).map(([dept, count]) => ({
+                  name: dept,
+                  value: count
+                })),
+                colors: ['#1890ff', '#13c2c2', '#52c41a']
+              });
+
+              // 消息类型分布
+              updateChart('messageTypeChart', {
+                title: '消息类型分布',
+                data: Object.entries(data.messageTypeCount).map(([type, count]) => ({
+                  name: type === 'announcement' ? '公告' : '工作',
+                  value: count
+                })),
+                colors: ['#1890ff', '#52c41a']
+              });
+
+              // 消息状态分布
+              updateChart('messageStatusChart', {
+                title: '消息状态分布',
+                data: [
+                  { name: '已发送', value: data.messageStatusCount['1'] || 0 }
+                ],
+                colors: ['#1890ff']
+              });
+
+              // 消息类别分布
+              updateChart('messageCategoryChart', {
+                title: '消息类别分布',
+                data: [
+                  { name: '公共消息', value: data.publicMessagesCount },
+                  { name: '个人消息', value: data.personalMessagesCount }
+                ],
+                colors: ['#1890ff', '#52c41a']
+              });
+            }
+          });
+      }
+
+      // 更新消息趋势图
+      function updateMessageTrendChart(messages) {
+        // 处理消息数据，按小时统计
+        const hourlyStats = processMessagesByHour(messages);
+        const hours = Array.from({length: 24}, (_, i) => `${String(i).padStart(2, '0')}:00`);
+        
+        const chart = echarts.init(document.getElementById('messageLineChart'));
+        const option = {
+          backgroundColor: '#1a1a1a',
+          title: {
+            text: '24小时消息趋势',
+            textStyle: {
+              color: '#999',
+              fontSize: 14
+            },
+            left: 10,
+            top: 10
+                            },
+                            legend: {
+            data: ['发送时间', '接收时间'],
+            textStyle: {
+              color: '#999'
+            },
+            top: 10,
+            right: 10
+          },
+          grid: {
+            left: '5%',
+            right: '5%',
+            top: '15%',
+            bottom: '8%',
+            containLabel: true
+          },
+          tooltip: {
+            trigger: 'axis',
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            borderColor: '#333',
+                                textStyle: {
+                                    color: '#fff'
+                                },
+            formatter: function(params) {
+              let result = params[0].axisValue + '<br/>';
+              params.forEach(item => {
+                result += `${item.seriesName}: ${item.value}条<br/>`;
+              });
+              return result;
+            }
+                            },
+                            xAxis: {
+                                type: 'category',
+            boundaryGap: false,
+            data: hours,
+                                axisLine: {
+                                    lineStyle: {
+                color: '#333'
+              }
+            },
+            axisLabel: {
+              color: '#999',
+              interval: 2
+            },
+            splitLine: {
+              show: true,
+              lineStyle: {
+                color: '#333',
+                type: 'dashed'
+                                    }
+                                }
+                            },
+                            yAxis: {
+                                type: 'value',
+            min: 0,
+            splitNumber: 4,
+                                axisLine: {
+              show: false
+            },
+            axisLabel: {
+              color: '#999'
+            },
+            splitLine: {
+                                    lineStyle: {
+                color: '#333',
+                type: 'dashed'
+                                    }
+                                }
+                            },
+                            series: [
+                                {
+              name: '发送时间',
+                                    type: 'line',
+                                    smooth: true,
+              symbol: 'circle',
+              symbolSize: 8,
+              data: hourlyStats.sent,
+                                    lineStyle: {
+                color: '#1890ff'
+                                    },
+                                    itemStyle: {
+                color: '#1890ff'
+              },
+              areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: 'rgba(24,144,255,0.3)' },
+                  { offset: 1, color: 'rgba(24,144,255,0.1)' }
+                ])
+              }
+            },
+            {
+              name: '接收时间',
+                                    type: 'line',
+                                    smooth: true,
+              symbol: 'circle',
+              symbolSize: 8,
+              data: hourlyStats.received,
+                                    lineStyle: {
+                color: '#52c41a'
+                                    },
+                                    itemStyle: {
+                color: '#52c41a'
+              },
+              areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: 'rgba(82,196,26,0.3)' },
+                  { offset: 1, color: 'rgba(82,196,26,0.1)' }
+                ])
+              }
+            }
+          ]
+        };
+        
+        chart.setOption(option);
+      }
+
+      // 处理消息数据，按小时统计发送和接收时间
+      function processMessagesByHour(messages) {
+        const hourlyData = {
+          sent: new Array(24).fill(0),
+          received: new Array(24).fill(0)
+        };
+
+        messages.forEach(message => {
+          // 处理发送时间
+          if (message.sent_time) {
+            const sentHour = new Date(message.sent_time).getHours();
+            hourlyData.sent[sentHour]++;
+          }
+          
+          // 处理接收时间
+          if (message.received_time) {
+            const receivedHour = new Date(message.received_time).getHours();
+            hourlyData.received[receivedHour]++;
+          }
+        });
+
+        return hourlyData;
+      }
+
+      // 设备数据处理和图表更新
+      function fetchDeviceData() {
+        fetch(`./get_devices_by_orgIdAndUserId?orgId=${customerId}`)
+          .then(response => response.json())
+          .then(result => {
+            if (result.success) {
+              const data = result.data;
+              
+              // 部门设备分布
+              updateChart('deviceDeptChart', {
+                title: '部门设备分布',
+                data: Object.entries(data.departmentDeviceCount).map(([dept, count]) => ({
+                  name: dept,
+                  value: count
+                })),
+                colors: ['#1890ff']
+              });
+
+              // 设备状态分布
+              updateChart('deviceStatusChart', {
+                title: '设备状态分布',
+                data: Object.entries(data.deviceStatusCount).map(([status, count]) => ({
+                  name: status === 'ACTIVE' ? '在线' : '离线',
+                  value: count
+                })),
+                colors: ['#52c41a', '#ff4d4f']
+              });
+
+              // 充电状态分布
+              updateChart('deviceChargeChart', {
+                title: '充电状态分布',
+                data: Object.entries(data.deviceChargingCount).map(([status, count]) => ({
+                  name: status === 'CHARGING' ? '充电中' : '未充电',
+                  value: count
+                })),
+                colors: ['#1890ff', '#faad14']
+              });
+
+              // 佩戴状态分布
+              updateChart('deviceWearChart', {
+                title: '佩戴状态分布',
+                data: Object.entries(data.deviceWearableCount).map(([status, count]) => ({
+                  name: status === 'WORN' ? '已佩戴' : '未佩戴',
+                  value: count
+                })),
+                colors: ['#52c41a', '#ff4d4f']
+              });
+            }
+          });
+      }
+
+      // 告警数据处理和图表更新
+      function fetchAlertData() {
+        fetch(`./get_alerts_by_orgIdAndUserId?orgId=${customerId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+              const alertData = data.data;
+              
+              // 更新告警趋势图
+              updateAlertTrendChart(alertData);
+              
+              // 更新告警饼图
+              // 1. 部门告警分布
+              updateChart('deptPieChart', {
+                title: '部门告警分布',
+                data: Object.entries(alertData.departmentStats).map(([id, dept]) => ({
+                  name: dept.name,
+                  value: dept.total_alerts
+                })),
+                colors: ['#1890ff', '#13c2c2']
+              });
+
+              // 2. 告警类型分布
+              updateChart('typePieChart', {
+                title: '告警类型分布',
+                data: Object.entries(alertData.alertTypeCount).map(([type, count]) => ({
+                  name: type,
+                  value: count
+                })),
+                colors: ['#ff7849', '#58d8ff', '#45b97c', '#9367b4', '#ff6b6b']
+              });
+
+              // 3. 告警状态分布
+              updateChart('statusPieChart', {
+                title: '告警状态分布',
+                data: Object.entries(alertData.alertStatusCount).map(([status, count]) => ({
+                  name: formatAlertStatus(status),
+                  value: count
+                })),
+                colors: ['#ff4d4f', '#52c41a', '#faad14']
+              });
+
+              // 4. 告警级别分布
+              updateChart('levelPieChart', {
+                title: '告警级别分布',
+                data: Object.entries(alertData.alertLevelCount).map(([level, count]) => ({
+                  name: formatAlertLevel(level),
+                  value: count
+                })),
+                colors: ['#ff4d4f', '#faad14']
+              });
+            }
+          })
+          .catch(error => console.error('Error fetching alert data:', error));
+      }
+
+      // 更新告警趋势图
+      function updateAlertTrendChart(alertData) {
+        const hourlyStats = processAlertsByHour(alertData.alerts);
+        const hours = Array.from({length: 24}, (_, i) => `${String(i).padStart(2, '0')}:00`);
+        
+        const chart = echarts.init(document.getElementById('alertLineChart'));
+        const option = {
+          backgroundColor: '#1a1a1a',
+                            title: {
+            text: '24小时告警趋势',
+                                textStyle: {
+              color: '#999',
+              fontSize: 14
+                            },
+            left: 10,
+            top: 10
+                            },
+                            legend: {
+            data: ['严重告警', '中等告警'],
+            textStyle: {
+              color: '#999'
+            },
+            top: 10,
+            right: 10
+          },
+          grid: {
+            left: '5%',
+            right: '5%',
+            top: '15%',
+            bottom: '8%',
+            containLabel: true
+          },
+          tooltip: {
+            trigger: 'axis',
+            backgroundColor: 'rgba(0,0,0,0.7)',
+            borderColor: '#333',
+                                textStyle: {
+                                    color: '#fff'
+                                },
+            formatter: function(params) {
+              let result = params[0].axisValue + '<br/>';
+              params.forEach(item => {
+                result += `${item.seriesName}: ${item.value}个<br/>`;
+              });
+              return result;
+            }
+          },
+          xAxis: {
+            type: 'category',
+            boundaryGap: false,
+            data: hours,
+            axisLine: {
+              lineStyle: {
+                color: '#333'
+              }
+            },
+            axisLabel: {
+              color: '#999',
+              interval: 2
+            },
+            splitLine: {
+              show: true,
+              lineStyle: {
+                color: '#333',
+                type: 'dashed'
+              }
+            }
+          },
+          yAxis: {
+            type: 'value',
+            min: 0,
+            splitNumber: 4,
+            axisLine: {
+              show: false
+            },
+            axisLabel: {
+              color: '#999'
+            },
+            splitLine: {
+              lineStyle: {
+                color: '#333',
+                type: 'dashed'
+              }
+            }
+                            },
+                            series: [
+                                {
+              name: '严重告警',
+              type: 'line',
+              smooth: true,
+              symbol: 'circle',
+              symbolSize: 8,
+              data: hourlyStats.critical,
+              lineStyle: {
+                color: '#ff7849'
+              },
+                                        itemStyle: {
+                color: '#ff7849'
+              },
+              areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: 'rgba(255,120,73,0.3)' },
+                  { offset: 1, color: 'rgba(255,120,73,0.1)' }
+                ])
+              }
+            },
+            {
+              name: '中等告警',
+              type: 'line',
+              smooth: true,
+              symbol: 'circle',
+              symbolSize: 8,
+              data: hourlyStats.medium,
+              lineStyle: {
+                color: '#58d8ff'
+              },
+                                        itemStyle: {
+                color: '#58d8ff'
+              },
+              areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: 'rgba(88,216,255,0.3)' },
+                  { offset: 1, color: 'rgba(88,216,255,0.1)' }
+                ])
+              }
+            }
+          ]
+        };
+        
+        chart.setOption(option);
+      }
+
+      // 处理告警数据，按小时统计
+      function processAlertsByHour(alerts) {
+        const hourlyData = {
+          critical: new Array(24).fill(0),
+          medium: new Array(24).fill(0)
+        };
+
+        alerts.forEach(alert => {
+          const alertTime = new Date(alert.alert_timestamp);
+          const hour = alertTime.getHours();
+          
+          if (alert.severity_level === 'critical') {
+            hourlyData.critical[hour]++;
+          } else if (alert.severity_level === 'medium') {
+            hourlyData.medium[hour]++;
+          }
+        });
+
+        return hourlyData;
+      }
+
+      // 格式化告警状态
+      function formatAlertStatus(status) {
+        const statusMap = {
+          'pending': '待处理',
+          'responded': '已响应',
+          'resolved': '已解决'
+        };
+        return statusMap[status] || status;
+      }
+
+      // 格式化告警级别
+      function formatAlertLevel(level) {
+        const levelMap = {
+          'critical': '严重告警',
+          'medium': '中等告警',
+          'high': '高级告警',
+          'low': '低级告警'
+        };
+        return levelMap[level] || level;
+      }
+
+      // 通用图表更新函数
+      function updateChart(chartId, config) {
+        const chart = echarts.init(document.getElementById(chartId));
+        chart.setOption(createPieOption(config.title, config.data, config.colors));
+      }
+
+      // 添加健康数据获取和更新函数
+      function fetchHealthData(dimension) {
+        const orgId = customerId;
+        fetch(`/get_health_stats?dimension=${dimension}&orgId=${customerId}`)
+          .then(response => response.json())
+          .then(data => {
+            console.log(data);
+            if (data.success) {
+              updateHealthCharts(data.data);
+            }
+          })
+          .catch(error => console.error('Error fetching health data:', error));
+      }
+
+      // 通用的图表配置
+      const healthChartBaseOption = {
+        backgroundColor: '#1a1a1a',
+        title: {
+          textStyle: {
+            color: '#999',
+            fontSize: 14
+          },
+          left: 10,
+          top: 10
+        },
+        grid: {
+          left: '5%',
+          right: '5%',
+          top: '15%',
+          bottom: '8%',
+          containLabel: true
+        },
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          borderColor: '#333',
+                                        textStyle: {
+                                            color: '#fff'
+                                        }
+                                    },
+        xAxis: {
+          type: 'category',
+          boundaryGap: false,
+          axisLine: {
+            lineStyle: {
+              color: '#333'
+            }
+          },
+          axisLabel: {
+            color: '#999',
+            interval: 2
+          },
+          splitLine: {
+                                            show: true,
+            lineStyle: {
+              color: '#333',
+              type: 'dashed'
+            }
+          }
+        },
+        yAxis: {
+          type: 'value',
+          splitNumber: 4,
+          axisLine: {
+            show: false
+          },
+          axisLabel: {
+            color: '#999'
+          },
+          splitLine: {
+            lineStyle: {
+              color: '#333',
+              type: 'dashed'
+            }
+          }
+        }
+      };
+
+      function updateHealthCharts(data) {
+        // 心率趋势图
+        const heartRateChart = echarts.init(document.getElementById('heartRateChart'));
+        heartRateChart.setOption({
+          ...healthChartBaseOption,
+          title: {
+            text: '心率趋势',
+            ...healthChartBaseOption.title
+          },
+          legend: {
+            data: ['平均心率', '最高心率', '最低心率'],
+            textStyle: { color: '#999' },
+            top: 10,
+            right: 10
+          },
+          series: [
+            {
+              name: '平均心率',
+              type: 'line',
+              smooth: true,
+              symbol: 'circle',
+              symbolSize: 8,
+              data: data.stats.heart_rate.map(d => d.avg),
+              lineStyle: {
+                color: '#1890ff'
+              },
+              itemStyle: {
+                color: '#1890ff'
+              },
+              areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: 'rgba(24,144,255,0.3)' },
+                  { offset: 1, color: 'rgba(24,144,255,0.1)' }
+                ])
+              }
+            },
+            {
+              name: '最高心率',
+              type: 'line',
+              smooth: true,
+              symbol: 'circle',
+              symbolSize: 8,
+              data: data.stats.heart_rate.map(d => d.max),
+              lineStyle: {
+                color: '#ff7849'
+              },
+              itemStyle: {
+                color: '#ff7849'
+              },
+              areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: 'rgba(255,120,73,0.3)' },
+                  { offset: 1, color: 'rgba(255,120,73,0.1)' }
+                ])
+              }
+            },
+            {
+              name: '最低心率',
+              type: 'line',
+              smooth: true,
+              symbol: 'circle',
+              symbolSize: 8,
+              data: data.stats.heart_rate.map(d => d.min),
+              lineStyle: {
+                color: '#58d8ff'
+              },
+              itemStyle: {
+                color: '#58d8ff'
+              },
+              areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: 'rgba(88,216,255,0.3)' },
+                  { offset: 1, color: 'rgba(88,216,255,0.1)' }
+                ])
+              }
+            }
+          ]
+        });
+
+        // 血压趋势图
+        const pressureChart = echarts.init(document.getElementById('pressureChart'));
+        pressureChart.setOption({
+          ...healthChartBaseOption,
+          title: {
+            text: '血压趋势',
+            ...healthChartBaseOption.title
+          },
+          legend: {
+            data: ['收缩压', '舒张压'],
+            textStyle: { color: '#999' },
+            top: 10,
+            right: 10
+          },
+          series: [
+            {
+              name: '收缩压',
+              type: 'line',
+              smooth: true,
+              symbol: 'circle',
+              symbolSize: 8,
+              data: data.stats.pressure.map(d => d.high),
+              lineStyle: {
+                color: '#ff7849'
+              },
+              itemStyle: {
+                color: '#ff7849'
+              },
+              areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: 'rgba(255,120,73,0.3)' },
+                  { offset: 1, color: 'rgba(255,120,73,0.1)' }
+                ])
+              }
+            },
+            {
+              name: '舒张压',
+              type: 'line',
+              smooth: true,
+              symbol: 'circle',
+              symbolSize: 8,
+              data: data.stats.pressure.map(d => d.low),
+              lineStyle: {
+                color: '#58d8ff'
+              },
+              itemStyle: {
+                color: '#58d8ff'
+              },
+              areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: 'rgba(88,216,255,0.3)' },
+                  { offset: 1, color: 'rgba(88,216,255,0.1)' }
+                ])
+              }
+            }
+          ]
+        });
+
+        // 血氧趋势图
+        const oxygenChart = echarts.init(document.getElementById('oxygenChart'));
+        oxygenChart.setOption({
+          ...healthChartBaseOption,
+          title: {
+            text: '血氧趋势',
+            ...healthChartBaseOption.title
+          },
+          series: [{
+            name: '血氧',
+            type: 'line',
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 8,
+            data: data.stats.blood_oxygen,
+            lineStyle: {
+              color: '#58d8ff'
+            },
+            itemStyle: {
+              color: '#58d8ff'
+            },
+            areaStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: 'rgba(88,216,255,0.3)' },
+                { offset: 1, color: 'rgba(88,216,255,0.1)' }
+              ])
+            }
+          }]
+        });
+
+        // 体温趋势图
+        const temperatureChart = echarts.init(document.getElementById('temperatureChart'));
+        temperatureChart.setOption({
+          ...healthChartBaseOption,
+          title: {
+            text: '体温趋势',
+            ...healthChartBaseOption.title
+          },
+          series: [{
+            name: '体温',
+            type: 'line',
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 8,
+            data: data.stats.temperature,
+            lineStyle: {
+              color: '#ff7849'
+            },
+            itemStyle: {
+              color: '#ff7849'
+            },
+            areaStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: 'rgba(255,120,73,0.3)' },
+                { offset: 1, color: 'rgba(255,120,73,0.1)' }
+              ])
+            }
+          }]
+        });
+
+        // 压力趋势图
+        const stressChart = echarts.init(document.getElementById('stressChart'));
+        stressChart.setOption({
+          ...healthChartBaseOption,
+          title: {
+            text: '压力趋势',
+            ...healthChartBaseOption.title
+          },
+          series: [{
+            name: '压力',
+            type: 'line',
+            smooth: true,
+            symbol: 'circle',
+            symbolSize: 8,
+            data: data.stats.stress,
+            lineStyle: {
+              color: '#722ed1'
+            },
+            itemStyle: {
+              color: '#722ed1'
+            },
+            areaStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: 'rgba(114,46,209,0.3)' },
+                { offset: 1, color: 'rgba(114,46,209,0.1)' }
+              ])
+            }
+          }]
+        });
+
+        // 活动趋势图
+        const activityChart = echarts.init(document.getElementById('activityChart'));
+        activityChart.setOption({
+          ...healthChartBaseOption,
+          title: {
+            text: '活动趋势',
+            ...healthChartBaseOption.title
+          },
+          legend: {
+            data: ['步数', '距离'],
+            textStyle: { color: '#999' },
+            top: 10,
+            right: 10
+          },
+          series: [
+            {
+              name: '步数',
+              type: 'bar',
+              data: data.stats.activity.map(d => d.steps),
+              itemStyle: {
+                color: new echarts.graphic.LinearGradient(0, 1, 0, 0, [
+                  { offset: 0, color: '#58d8ff' },
+                  { offset: 1, color: '#1890ff' }
+                ])
+              }
+            },
+            {
+              name: '距离',
+              type: 'line',
+              smooth: true,
+              symbol: 'circle',
+              symbolSize: 8,
+              data: data.stats.activity.map(d => d.distance),
+              lineStyle: {
+                color: '#ff7849'
+              },
+              itemStyle: {
+                color: '#ff7849'
+              }
+            }
+          ]
+        });
+
+        // 添加窗口大小改变时的自适应
+        window.addEventListener('resize', function() {
+          heartRateChart.resize();
+          pressureChart.resize();
+          oxygenChart.resize();
+          temperatureChart.resize();
+          stressChart.resize();
+          activityChart.resize();
+        });
+      }
+
+      // 添加维度选择器事件监听
+      document.querySelector('#healthCharts .dimension-selector').addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') {
+          // 更新按钮状态
+          e.target.parentElement.querySelectorAll('button').forEach(btn => {
+            btn.classList.remove('active');
+          });
+          e.target.classList.add('active');
+          
+          // 获取新维度的数据
+          fetchHealthData(e.target.dataset.dimension);
+        }
+      });
+
+      // 获取用户统计数据
+      function fetchUserStats() {
+        const orgId = customerId;
+        fetch(`/fetch_users_stats?orgId=${customerId}`)
+          .then(response => response.json())
+          .then(data => {
+            if (data.success) {
+              updateUserCharts(data.data);
+            }
+          })
+          .catch(error => console.error('Error fetching user stats:', error));
+      }
+
+      // 更新用户统计图表
+      function updateUserCharts(data) {
+        // 部门用户分布图
+        const userDeptChart = echarts.init(document.getElementById('userDeptChart'));
+        userDeptChart.setOption({
+          backgroundColor: new echarts.graphic.RadialGradient(0.5, 0.5, 0.4, [
+            { offset: 0, color: '#1a1a1a' },
+            { offset: 1, color: '#000000' }
+          ]),
+          title: {
+            text: '部门用户分布',
+            textStyle: { color: '#fff' },
+            left: 'center'
+          },
+          tooltip: {
+            trigger: 'item',
+            formatter: '{b}: {c} ({d}%)'
+          },
+          legend: {
+            orient: 'vertical',
+            right: '5%',
+            top: 'middle',
+            textStyle: { color: '#fff' }
+          },
+          series: [{
+            type: 'pie',
+            radius: ['40%', '70%'],
+            center: ['50%', '50%'],
+            data: data.department_stats.map(dept => ({
+              name: dept.name,
+              value: dept.total,
+              itemStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: '#1890ff' },
+                  { offset: 1, color: '#13c2c2' }
+                ])
+              }
+            })),
+            label: {
+              show: true,
+              color: '#fff',
+              formatter: '{b}: {c}'
+            }
+          }]
+        });
+
+        // 设备佩戴情况图
+        const userDeviceChart = echarts.init(document.getElementById('userDeviceChart'));
+        userDeviceChart.setOption({
+          backgroundColor: new echarts.graphic.RadialGradient(0.5, 0.5, 0.4, [
+            { offset: 0, color: '#1a1a1a' },
+            { offset: 1, color: '#000000' }
+          ]),
+          title: {
+            text: '设备佩戴情况',
+            textStyle: { color: '#fff' },
+            left: 'center'
+          },
+          tooltip: {
+            trigger: 'item',
+            formatter: '{b}: {c} ({d}%)'
+          },
+          legend: {
+            orient: 'vertical',
+            right: '5%',
+            top: 'middle',
+            textStyle: { color: '#fff' }
+          },
+          series: [{
+            type: 'pie',
+            radius: ['50%', '70%'],
+            center: ['50%', '50%'],
+            data: [
+              {
+                name: '已佩戴',
+                value: data.overall_stats.users_with_device,
+                itemStyle: { color: '#52c41a' }
+              },
+              {
+                name: '未佩戴',
+                value: data.overall_stats.users_without_device,
+                itemStyle: { color: '#ff4d4f' }
+              }
+            ],
+            label: {
+              show: true,
+              color: '#fff',
+              formatter: '{b}: {c}'
+            }
+          }]
+        });
+
+        // 用户增长趋势图
+        const userGrowthChart = echarts.init(document.getElementById('userGrowthChart'));
+        userGrowthChart.setOption({
+          backgroundColor: new echarts.graphic.RadialGradient(0.5, 0.5, 0.4, [
+            { offset: 0, color: '#1a1a1a' },
+            { offset: 1, color: '#000000' }
+          ]),
+          title: {
+            text: '用户增长趋势',
+            textStyle: { color: '#fff' },
+            left: 'center'
+          },
+          tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+              type: 'shadow'
+            }
+          },
+          legend: {
+            data: ['总用户数', '已佩戴设备'],
+            textStyle: { color: '#fff' },
+            top: 25
+          },
+          grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            containLabel: true
+          },
+          xAxis: {
+            type: 'category',
+            data: data.monthly_stats.map(item => item.month),
+            axisLabel: { 
+              color: '#fff',
+              rotate: 45
+            }
+          },
+          yAxis: {
+            type: 'value',
+            axisLabel: { color: '#fff' }
+          },
+          series: [
+            {
+              name: '总用户数',
+              type: 'bar',
+              data: data.monthly_stats.map(item => item.total),
+              itemStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: '#1890ff' },
+                  { offset: 1, color: '#13c2c2' }
+                ])
+              }
+            },
+            {
+              name: '已佩戴设备',
+              type: 'bar',
+              data: data.monthly_stats.map(item => item.with_device),
+              itemStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: '#52c41a' },
+                  { offset: 1, color: '#13c2c2' }
+                ])
+              }
+            }
+          ]
+        });
+
+        // 添加窗口大小改变时的自适应
+        window.addEventListener('resize', function() {
+          userDeptChart.resize();
+          userDeviceChart.resize();
+          userGrowthChart.resize();
+        });
+      }
+
+      // 页面加载完成后初始化
+      document.addEventListener('DOMContentLoaded', () => {
+        if (!customerId) {
+          console.error('未提供 customerId 参数');
+          return;
+        }
+        
+        // 默认加载告警数据
+        fetchAlertData();
+        
+        // 设置自动刷新
+        setInterval(() => {
+          const activeTab = document.querySelector('.tab.active').dataset.type;
+          const activeDimension = document.querySelector('#healthCharts .dimension-selector button.active')?.dataset.dimension;
+          
+          switch(activeTab) {
+            case 'alert':
+              fetchAlertData();
+              break;
+            case 'message':
+              fetchMessageData();
+              break;
+            case 'device':
+              fetchDeviceData();
+              break;
+            case 'health':
+              fetchHealthData(activeDimension || 'day');
+              break;
+          }
+        }, 300000); // 每5分钟刷新一次
+      });
+    </script>
+  </body>
+</html>

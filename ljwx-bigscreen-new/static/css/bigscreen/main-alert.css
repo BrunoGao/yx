@@ -1,0 +1,297 @@
+.flex-row-fe {
+    position: relative;
+    width: 414px;
+    height: 212px;
+    margin: 0 0 0 0;
+    z-index: 8888;
+  }
+  .vector-alert {
+    position: absolute;
+    width: 87.5px;
+    height: 100.5px;
+    top: -1px;
+    left: 327.5px;
+    background: url(../images/main/alert/9583790f-daf2-455d-ae18-739a462cf94f.png)
+      no-repeat center;
+    background-size: cover;
+    z-index: 6;
+  }
+  .vector-1-alert {
+    position: absolute;
+    width: 396px;
+    height: 194px;
+    top: 9px;
+    left: 9px;
+    background: url(../images/main/alert/8d0933cb-d556-4dbb-8866-8f76b30e531b.png)
+      no-repeat center;
+    background-size: cover;
+  }
+  .mask-group-alert {
+    position: absolute;
+    width: 394px;
+    height: 192px;
+    top: 1px;
+    left: 1px;
+    background: url(../images/main/alert/1b817c7c-10f5-409e-9873-63a9b1c04dee.png)
+      no-repeat center;
+    background-size: cover;
+    z-index: 1;
+  }
+  .occurred-time {
+    position: relative;
+    width: 362px;
+    height: 20px;
+    margin: 72px 0 0 16px;
+    font-family: Source Han Sans CN, var(--default-font-family);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+    text-align: left;
+    text-overflow: initial;
+    white-space: nowrap;
+    z-index: 2;
+  }
+  .occurred-time-2 {
+    position: relative;
+    color: #ff386b;
+    font-family: Source Han Sans CN, var(--default-font-family);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+    text-align: left;
+  }
+  .occurred-time-warning {
+    position: relative;
+    color: #f4e64f;
+    font-family: Source Han Sans CN, var(--default-font-family);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+    text-align: left;
+  }
+  .occurred-time-3 {
+    position: relative;
+    color: #ffffff;
+    font-family: Source Han Sans CN, var(--default-font-family);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    text-align: left;
+  }
+  .occurred-location {
+    position: relative;
+    width: 362px;
+    height: 20px;
+    margin: 12px 0 0 16px;
+    font-family: Source Han Sans CN, var(--default-font-family);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+    text-align: left;
+    text-overflow: initial;
+    white-space: nowrap;
+    z-index: 3;
+  }
+  .occurred-location-4 {
+    position: relative;
+    color: #ff386b;
+    font-family: Source Han Sans CN, var(--default-font-family);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+    text-align: left;
+  }
+  .occurred-location-warning {
+    position: relative;
+    color: #f4e64f;
+    font-family: Source Han Sans CN, var(--default-font-family);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+    text-align: left;
+  }
+  .mou-mou-street {
+    position: relative;
+    color: #ffffff;
+    font-family: Source Han Sans CN, var(--default-font-family);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    text-align: left;
+  }
+  .mou-mou {
+    position: relative;
+    color: #ffffff;
+    font-family: Source Han Sans CN, var(--default-font-family);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    text-align: left;
+  }
+  .mou-mou-street-5 {
+    position: relative;
+    color: #ffffff;
+    font-family: Source Han Sans CN, var(--default-font-family);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    text-align: left;
+  }
+  .mou-mou-6 {
+    position: relative;
+    color: #ffffff;
+    font-family: Source Han Sans CN, var(--default-font-family);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    text-align: left;
+  }
+  .mou-mou-street-7 {
+    position: relative;
+    color: #ffffff;
+    font-family: Source Han Sans CN, var(--default-font-family);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    text-align: left;
+  }
+  .emergency-response {
+    position: relative;
+    width: 362px;
+    height: 40px;
+    margin: 12px 0 0 16px;
+    font-family: Source Han Sans CN, var(--default-font-family);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+    text-align: left;
+    top: -5px;
+    z-index: 4;
+  }
+  .details-info-warning {
+    position: relative;
+    color: #f4e64f;
+    font-family: Source Han Sans CN, var(--default-font-family);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+    left: 9px;
+    text-align: left;
+    margin-left: 10px; /* 添加左边距 */
+    left: auto; /* 移除原有的 left 设置 */
+  }
+  .details-info {
+    position: relative;
+    color: #ff386b;
+    font-family: Source Han Sans CN, var(--default-font-family);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+    text-align: left;
+  }
+  .details-info-8 {
+    position: relative;
+    color: #ff386b;
+    font-family: Source Han Sans CN, var(--default-font-family);
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 20px;
+    text-align: left;
+  }
+  .emergency-response-9 {
+    position: relative;
+    color: #ffffff;
+    font-family: Source Han Sans CN, var(--default-font-family);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 20px;
+    text-align: left;
+  }
+  
+  .group-a-alert {
+    position: absolute;
+    width: 40px;
+    height: 40px;
+    top: 16px;
+    left: 131px;
+    background: url(../images/main/alert/23b28e31-3329-4a64-b61c-4810e7d0610b.png)
+      no-repeat center;
+    background-size: 100% 100%;
+    z-index: 12;
+  }
+  .subtract {
+    position: relative;
+    width: 24px;
+    height: 24px;
+    margin: 8px 0 0 8px;
+    background: url(../images/main/alert/1a2e2157-545d-439c-9ff3-d2693a95358b.png)
+      no-repeat center;
+    background-size: cover;
+    z-index: 13;
+  }
+  .level-one-response {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    position: absolute;
+    height: 30px;
+    top: 23px;
+    left: 183px;
+    color: #ff386b;
+    font-family: Source Han Sans CN, var(--default-font-family);
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 30px;
+    text-align: left;
+    white-space: nowrap;
+    z-index: 14;
+  }
+  .level-two-response {
+    display: flex;
+    align-items: flex-start;
+    justify-content: flex-start;
+    position: absolute;
+    height: 30px;
+    top: 23px;
+    left: 183px;
+    color: #c0e711;
+    font-family: Source Han Sans CN, var(--default-font-family);
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 30px;
+    text-align: left;
+    white-space: nowrap;
+    z-index: 14;
+  }
+  .vector-b {
+    position: absolute;
+    width: 87.5px;
+    height: 100.5px;
+    top: 112.5px;
+    left: -1px;
+    background: url(../images/main/alert/fc3c90aa-7a1a-41d8-8316-48da68e4021d.png)
+      no-repeat center;
+    background-size: cover;
+    z-index: 5;
+  }
+  .fill-alert {
+    position: absolute;
+    width: 27.04px;
+    height: 2px;
+    top: 210px;
+    left: 377px;
+    background: url(../images/main/alert/a26bb1be-71ae-4b6b-a644-348c38a9d2e4.png)
+      no-repeat center;
+    background-size: cover;
+    z-index: 7;
+  }
+  .fill-c-alert {
+    position: relative;
+    width: 15.022px;
+    height: 2px;
+    margin: 6px 0 0 389.018px;
+    background: url(../images/main/alert/bdd7fad5-cd59-4221-97a4-6639392d16b8.png)
+      no-repeat center;
+    background-size: cover;
+    z-index: 8;
+  }

@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能健康数据分析平台</title>
+    
+    <!-- 外部CSS样式 -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bigscreen/main.css') }}">
+    
+    <!-- 外部JavaScript库 -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://webapi.amap.com/maps?v=2.0&key=d45f28e481665db5b1145a5aa989e68a&plugin=AMap.Scale,AMap.ToolBar,AMap.MapType"></script>
+    <script src="https://webapi.amap.com/loca?v=2.0.0&key=d45f28e481665db5b1145a5aa989e68a"></script>
+</head>
+<body>
+    <!-- 添加标题栏 -->
+    <div class="header-title">
+        <div class="header-decoration left"></div>
+        <h1>{{ BIGSCREEN_TITLE }}</h1>
+        <div class="header-decoration right"></div>
+    </div>
+
+    <div class="container">
+        <!-- 左侧面板 -->
+        <div class="side-container">
+            <div class="panel">
+                <div class="panel-header">
+                    <span>实时统计</span>
+                    <span class="stats-date" id="statsDate"></span>
+                </div>
+                <div class="panel-content">
+                    <div class="stats-grid">
+                        <div class="stat-card health-data">
+                            <div class="stat-icon">📊</div>
+                            <div class="stat-info">
+                                <span class="stat-label">健康数据</span>
+                                <div class="stat-value-container">
+                                    <span class="stat-value" id="healthDataCount">0</span>
+                                    <span class="stat-unit">条</span>
+                                </div>
+                                <div class="stat-trend" id="healthTrend">+0%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card alert-data">
+                            <div class="stat-icon">⚠️</div>
+                            <div class="stat-info">
+                                <span class="stat-label">待处理告警</span>
+                                <div class="stat-value-container">
+                                    <span class="stat-value" id="pendingAlerts">0</span>
+                                    <span class="stat-unit">条</span>
+                                </div>
+                                <div class="stat-trend" id="alertTrend">+0%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card device-data">
+                            <div class="stat-icon">📱</div>
+                            <div class="stat-info">
+                                <span class="stat-label">活跃设备</span>
+                                <div class="stat-value-container">
+                                    <span class="stat-value" id="activeDevices">0</span>
+                                    <span class="stat-unit">台</span>
+                                </div>
+                                <div class="stat-trend" id="deviceTrend">+0%</div>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card message-data">
+                            <div class="stat-icon">💬</div>
+                            <div class="stat-info">
+                                <span class="stat-label">未读消息</span>
+                                <div class="stat-value-container">
+                                    <span class="stat-value" id="unreadMessages">0</span>
+                                    <span class="stat-unit">条</span>
+                                </div>
+                                <div class="stat-trend" id="messageTrend">+0%</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="system-status" id="systemStatus">
+                        <div class="status-indicator normal" id="statusIndicator"></div>
+                        <span class="status-text" id="statusText">系统正常</span>
+                        <span class="health-score" id="systemHealthScore">100</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel personnel-management">
+                <div class="panel-header">
+                    <h3>人员管理</h3>
+                </div>
+                <div class="panel-content">
+                    <!-- 统计概览卡片 -->
+                    <div class="personnel-stats-overview">
+                        <div class="personnel-stats-grid">
+                            <div class="personnel-stat-item">
+                                <div class="stat-value" id="totalUsers">0</div>
+                                <div class="stat-label">总人数</div>
+                            </div>
+                            <div class="personnel-stat-item">
+                                <div class="stat-value" id="totalBindDevices">0</div>
+                                <div class="stat-label">已绑定设备</div>
+                            </div>
+                            <div class="personnel-stat-item">
+                                <div class="stat-value" id="onlineRate">0%</div>
+                                <div class="stat-label">绑定率</div>
+                            </div>
+                        </div>
+                        <div class="personnel-details-link" onclick="showPersonnelDetails()">详情 →</div>
+                    </div>
+                    
+                    <!-- 快速统计卡片 -->
+                    <div class="quick-stats-grid">
+                        <div class="quick-stat-card" onclick="filterByDepartment()">
+                            <div class="quick-stat-value" id="activeDeptCount">0</div>
+                            <div class="quick-stat-label">活跃部门</div>
+                        </div>
+                        <div class="quick-stat-card" onclick="filterByOnlineStatus()">
+                            <div class="quick-stat-value" id="onlineUsers">0</div>
+                            <div class="quick-stat-label">在线人员</div>
+                        </div>
+                        <div class="quick-stat-card" onclick="filterByDeviceStatus()">
+                            <div class="quick-stat-value" id="boundDevices">0</div>
+                            <div class="quick-stat-label">绑定设备</div>
+                        </div>
+                        <div class="quick-stat-card" onclick="filterByAlertStatus()">
+                            <div class="quick-stat-value" id="alertUsers">0</div>
+                            <div class="quick-stat-label">告警人员</div>
+                        </div>
+                    </div>
+                    
+                    <!-- 图表区域 -->
+                    <div class="personnel-charts-container">
+                        <div id="departmentDistribution" class="personnel-chart">
+                            <div class="chart-title">部门分布</div>
+                        </div>
+                        <div id="userStatusChart" class="personnel-chart">
+                            <div class="chart-title">在线状态</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel">
+                <div class="panel-header">
+                    <span>告警信息</span>
+                </div>
+                <div class="panel-content">
+                    <div id="alertList" class="chart-container"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 中间地图区域 -->
+        <div class="middle-container">
+            <!-- 地图容器 -->
+            <div class="map-container" id="map-container">
+                <!-- 筛选面板 -->
+                <div class="filter-panel" id="filterPanel">
+                    <div class="filter-toggle" id="filterToggle" onclick="toggleFilterPanel()">🔍</div>
+                    <div class="filter-content">
+                        <div class="filter-header">
+                            <span>人员筛选</span>
+                        </div>
+                        <div class="filter-container">
+                            <input type="text" id="searchInput" class="filter-search" placeholder="🔍 模糊搜索用户...">
+                            <select id="deptSelect" class="filter-select">
+                                <option value="">选择部门</option>
+                            </select>
+                            <select id="userSelect" class="filter-select">
+                                <option value="">选择用户</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <!-- 保留原有地图代码 -->
+            </div>
+            
+            <!-- 消息面板 -->
+            <div class="message-panel">
+                <div class="panel-header">
+                    <span>消息信息</span>
+                    <span class="message-count" id="messageCount">0</span>
+                </div>
+                <!-- 消息面板内容 -->
+                <div class="message-panel-content">
+                    <!-- 左侧消息列表 -->
+                    <div class="message-list-container">
+                        <div class="message-list-title">最新消息</div>
+                        <div class="message-list" id="messageList"></div>
+                    </div>
+                    
+                    <!-- 右侧统计图表 -->
+                    <div class="message-stats-container">
+                        <div class="message-stats-title">消息统计</div>
+                        <div class="message-stats-chart">
+                            <!-- 消息统计概览 -->
+                            <div class="message-stats-overview">
+                                <div class="message-stat-item">
+                                    <div class="message-stat-value" id="todayMessages">0</div>
+                                    <div class="message-stat-label">今日</div>
+                                </div>
+                                <div class="message-stat-item">
+                                    <div class="message-stat-value" id="unreadMessages">0</div>
+                                    <div class="message-stat-label">未读</div>
+                                </div>
+                                <div class="message-stat-item">
+                                    <div class="message-stat-value" id="urgentMessages">0</div>
+                                    <div class="message-stat-label">紧急</div>
+                                </div>
+                            </div>
+                            <!-- 消息类型分布图 -->
+                            <div id="messageStatsChart" class="message-chart"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右侧面板 -->
+        <div class="side-container">
+            <div class="panel watch-management">
+                <div class="panel-header">
+                    <span>📱 手表管理</span>
+                    <span class="label">总数: <span class="number" id="totalWatchDevices">0</span></span>
+                </div>
+                <div class="panel-content">
+                    <!-- 图表区域 -->
+                    <div id="statsChart" class="chart-container"></div>
+                </div>
+            </div>
+            
+            <div class="panel health-analysis">
+                <div class="panel-header">
+                    <span>💗 健康数据分析</span>
+                    <span class="health-analysis-subtitle">最近7天</span>
+                </div>
+                <div class="panel-content">
+                    <!-- 健康趋势图 -->
+                    <div id="trendChart" class="health-trend-chart">
+                        <div class="chart-title">📊 健康趋势分析</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel health-score-panel">
+                <div class="panel-header">
+                    <span>🏆 健康评分</span>
+                    <span class="total-score">总分：94.5</span>
+                </div>
+                <div class="panel-content">
+                    <!-- 评分显示区域 -->
+                    <div class="score-display">
+                        <div class="score-main">
+                            <div class="score-circle">
+                                <div class="score-number">94.5</div>
+                            </div>
+                            <div class="score-info">
+                                <div class="score-title">综合健康评分</div>
+                                <div class="score-status">良好状态</div>
+                            </div>
+                        </div>
+                        <div style="color: rgba(255,255,255,0.6); font-size: 12px; cursor: pointer;" onclick="showScoreDetails()">
+                            详情 →
+                        </div>
+                    </div>
+                    <!-- 图表区域 -->
+                    <div id="healthScoreChart" class="chart-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 模态框 -->
+    <div id="personnelModal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>人员详情</h3>
+                <span class="modal-close" onclick="closePersonnelModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="personnelModalBody">
+                <!-- 动态加载内容 -->
+            </div>
+        </div>
+    </div>
+
+    <!-- 外部JavaScript模块 -->
+    <script src="{{ url_for('static', filename='js/bigscreen/constants.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bigscreen/utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bigscreen/globals.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bigscreen/chart-configs.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bigscreen/personnel-filter.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bigscreen/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/bigscreen/app.js') }}"></script>
+    
+    <!-- 页面初始化 -->
+    <script>
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 页面加载完成，开始初始化...');
+            
+            // 设置客户ID
+            if (typeof window !== 'undefined') {
+                window.CUSTOMER_ID = '{{ customerId }}';
+                window.BIGSCREEN_TITLE = '{{ BIGSCREEN_TITLE }}';
+            }
+            
+            // 初始化应用
+            if (typeof initializeApp === 'function') {
+                initializeApp();
+            }
+        });
+    </script>
+</body>
+</html> 

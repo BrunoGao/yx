@@ -1,0 +1,13 @@
+# Buildx配置文件 - 解决国内网络访问Docker Hub问题
+# 放置在 ~/.docker/buildx/default/buildkitd.toml
+
+[registry."docker.io"]
+  mirrors = [
+    "https://docker.m.daocloud.io",
+    "https://hlm3tppo.mirror.aliyuncs.com", 
+    "https://docker.mirrors.ustc.edu.cn"
+  ]
+
+[registry."14.127.218.229:5001"]
+  http = true
+  insecure = true

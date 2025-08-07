@@ -1,0 +1,9 @@
+.health-table-container{background:rgba(1,19,38,0.8);border-radius:12px;padding:20px;border:1px solid #00e4ff33;box-shadow:0 8px 32px 0 #1f268733;backdrop-filter:blur(4px);margin-bottom:20px;}
+.health-table-container h2{color:#00e4ff;font-size:20px;margin-bottom:20px;text-shadow:0 0 10px #00e4ff88;}
+.health-table{width:100%;border-collapse:separate;border-spacing:0;margin-top:10px;font-size:14px;}
+.health-table th{background:linear-gradient(180deg,#00e4ff26 0%,#00e4ff0d 100%);color:#00e4ff;font-weight:600;padding:15px;text-align:left;border-bottom:2px solid #00e4ff33;text-shadow:0 0 10px #00e4ff55;position:sticky;top:0;z-index:10;}
+.health-table th:first-child{border-top-left-radius:8px;}th:last-child{border-top-right-radius:8px;}
+.health-table td{padding:12px 15px;border-bottom:1px solid #00e4ff1a;transition:.3s;}
+.health-table tr:nth-child(even){background:#00e4ff08;}
+.health-table tr:hover td{background:#00e4ff1a;transform:translateY(-2px);box-shadow:0 4px 8px #00e4ff1a;}
+.health-table td:first-child{font-weight:600;color:#00e4ff;} 

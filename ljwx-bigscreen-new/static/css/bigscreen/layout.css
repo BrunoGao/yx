@@ -1,0 +1,98 @@
+/* 主容器布局 */
+.container {
+  display: grid;
+  grid-template-columns: 22% 1fr 22%; /* 调整为比例分配：左22% 中间自适应 右22% */
+  grid-gap: 16px; /* 减少间距：从20px减少到16px */
+  padding: 0 16px 16px 16px; /* 减少内边距：从20px减少到16px */
+  height: calc(100vh - 76px); /* 优化高度计算：60px标题+16px底边距 */
+  max-height: calc(100vh - 76px); /* 限制最大高度 */
+  overflow: hidden;
+}
+
+/* 面板基础样式 */
+.panel {
+  background: rgba(0, 21, 41, 0.7);
+  border: 1px solid rgba(0, 228, 255, 0.2);
+  border-radius: 4px;
+  padding: 10px; /* 减少内边距：从12px减少到10px */
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 侧边栏容器 */
+.side-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px; /* 减少间距：从15px减少到12px */
+  height: 100%;
+  overflow: hidden; /* 防止内容溢出 */
+}
+
+/* 左侧面板高度分配 */
+.panel:nth-child(1) {
+  height: 30%; /* 统计信息面板：从20%增加到30% */
+  min-height: 150px; /* 增加最小高度 */
+  max-height: 250px; /* 增加最大高度 */
+}
+
+.panel:nth-child(2) {
+  height: 30%; /* 人员管理面板：从35%减少到30% */
+  min-height: 220px; /* 调整最小高度 */
+  max-height: none; /* 调整最大高度 */
+}
+
+.panel:nth-child(3) {
+  flex: 1; /* 使用flex: 1填充剩余空间而不是固定高度 */
+  min-height: 220px; /* 调整最小高度 */
+  max-height: none; /* 允许自适应但不超过容器 */
+  overflow: hidden; /* 防止内容溢出 */
+}
+
+/* 右侧面板高度分配 */
+.side-container:last-child .panel:nth-child(1) {
+  height: 26%; /* 手表管理面板：从30%减少到26% */
+  min-height: 200px; /* 减少最小高度：从220px到200px */
+  max-height: 250px; /* 减少最大高度：从280px到250px */
+}
+
+.side-container:last-child .panel:nth-child(2) {
+  height: 36%; /* 健康数据分析面板：从34%增加到36% */
+  min-height: 220px; /* 增加最小高度：从200px到220px */
+  max-height: 340px; /* 增加最大高度：从320px到340px */
+}
+
+.side-container:last-child .panel:nth-child(3) {
+  flex: 1; /* 使用flex: 1填充剩余空间确保底部对齐 */
+  min-height: 200px; /* 调整最小高度 */
+  max-height: none; /* 保持无最大高度限制 */
+  overflow: hidden; /* 防止内容溢出 */
+}
+
+/* 面板头部样式 */
+.panel-header {
+  color: #00e4ff;
+  font-size: 16px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 面板内容区域 */
+.panel-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* 地图容器样式 */
+.map-container {
+  flex: 1; /* 使用flex: 1自动填充剩余空间 */
+  background: rgba(0, 21, 41, 0.7);
+  border: 1px solid rgba(0, 228, 255, 0.2);
+  border-radius: 4px;
+  padding: 10px;
+  margin-bottom: 10px;
+  min-height: 300px; /* 设置最小高度确保地图有足够显示空间 */
+} 

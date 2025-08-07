@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>轨迹可视化</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://webapi.amap.com/maps?v=2.0&key=7de0c6b90cb13571ce931ca75a66c6e7"></script>
+    <style>
+        body {
+            margin: 0;
+            background: #001529;
+            overflow: hidden;
+        }
+        #chart-container {
+            width: 100vw;
+            height: 100vh;
+        }
+        .stats-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 21, 41, 0.7);
+            padding: 20px;
+            border-radius: 8px;
+            color: #00e4ff;
+            font-family: 'Arial', sans-serif;
+            min-width: 200px;
+            z-index: 100;
+        }
+        .stats-item {
+            margin: 10px 0;
+        }
+        .stats-value {
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .stats-label {
+            font-size: 14px;
+            opacity: 0.8;
+        }
+    </style>
+</head>
+<body>
+    <div id="chart-container"></div>
+    <div class="stats-panel">
+        <div class="stats-item">
+            <div class="stats-value" id="total-distance">0</div>
+            <div class="stats-label">总里程(km)</div>
+        </div>
+        <div class="stats-item">
+            <div class="stats-value" id="total-time">0</div>
+            <div class="stats-label">总时长(min)</div>
+        </div>
+        <div class="stats-item">
+            <div class="stats-value" id="avg-speed">0</div>
+            <div class="stats-label">平均速度(km/h)</div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化地图
+        const map = new AMap.Map('chart-container', {
+            zoom: 13,
+            center: [114.02, 22.54],
+            mapStyle: 'amap://styles/dark',
+            pitch: 0,
+            viewMode: '2D'
+        });
+
+        // 从后端获取轨迹数据
+        async function fetchTracks() {
+            try {
+                const response = await fetch('/api/tracks');
+                const tracks = await response.json();
+                console.log('Fetched tracks:', tracks);
+                initializeTracks(tracks);
+            } catch (error) {
+                console.error('Error fetching tracks:', error);
+            }
+        }
+
+        // 初始化轨迹
+        function initializeTracks(tracks) {
+            // 清除现有轨迹
+            map.clearMap();
+
+            // 存储所有坐标点用于计算边界
+            const allPoints = [];
+
+            // 添加所有轨迹
+            tracks.forEach(track => {
+                // 确保坐标点格式正确
+                const path = track.coordinates.map(coord => {
+                    allPoints.push(new AMap.LngLat(coord[0], coord[1]));
+                    return new AMap.LngLat(coord[0], coord[1]);
+                });
+
+                // 创建折线
+                const polyline = new AMap.Polyline({
+                    path: path,
+                    strokeColor: track.color,
+                    strokeWeight: 4,
+                    strokeOpacity: 0.8,
+                    showDir: true,
+                    lineJoin: 'round',
+                    lineCap: 'round',
+                    extData: {
+                        name: track.name,
+                        stats: track.stats
+                    }
+                });
+
+                // 添加到地图
+                polyline.setMap(map);
+
+                // 添加点击事件
+                polyline.on('click', (e) => {
+                    highlightTrack(polyline);
+                    updateStats(track.stats);
+                });
+
+                // 添加起点和终点标记
+                const startMarker = new AMap.Marker({
+                    position: path[0],
+                    content: '<div style="background-color: #00ff00; width: 10px; height: 10px; border-radius: 50%;"></div>',
+                    offset: new AMap.Pixel(-5, -5)
+                });
+                const endMarker = new AMap.Marker({
+                    position: path[path.length - 1],
+                    content: '<div style="background-color: #ff0000; width: 10px; height: 10px; border-radius: 50%;"></div>',
+                    offset: new AMap.Pixel(-5, -5)
+                });
+                startMarker.setMap(map);
+                endMarker.setMap(map);
+            });
+
+            // 调整视图以适应所有轨迹
+            if (allPoints.length > 0) {
+                const bounds = new AMap.Bounds(allPoints[0], allPoints[0]);
+                allPoints.forEach(point => bounds.extend(point));
+                map.setBounds(bounds);
+            }
+        }
+
+        // 高亮显示选中的轨迹
+        function highlightTrack(selectedPolyline) {
+            // 重置所有轨迹样式
+            map.getAllOverlays('polyline').forEach(polyline => {
+                if (polyline === selectedPolyline) {
+                    polyline.setOptions({
+                        strokeOpacity: 1,
+                        strokeWeight: 6,
+                        strokeColor: selectedPolyline.getOptions().strokeColor
+                    });
+                } else {
+                    polyline.setOptions({
+                        strokeOpacity: 0.3,
+                        strokeWeight: 4
+                    });
+                }
+            });
+        }
+
+        // 更新统计信息
+        function updateStats(stats) {
+            document.getElementById('total-distance').textContent = stats.distance.toFixed(2);
+            document.getElementById('total-time').textContent = stats.time;
+            document.getElementById('avg-speed').textContent = stats.speed.toFixed(2);
+        }
+
+        // 初始化加载
+        fetchTracks();
+    </script>
+</body>
+</html> 

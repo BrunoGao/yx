@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>人员运动轨迹展示</title>
+    <script src="https://webapi.amap.com/maps?v=2.0&key=7de0c6b90cb13571ce931ca75a66c6e7"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinycolor/1.4.2/tinycolor.min.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        .filter-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 8px;
+            color: white;
+            z-index: 1000;
+        }
+        .filter-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .filter-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .filter-select {
+            padding: 5px;
+            width: 200px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.7);
+            padding: 10px;
+            border-radius: 8px;
+            color: white;
+            z-index: 1000;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 5px 0;
+        }
+        .legend-color {
+            width: 20px;
+            height: 3px;
+            margin-right: 8px;
+        }
+        .dept-color-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+        .filter-select option {
+            padding: 5px;
+        }
+        .trajectory-arrow {
+            width: 0;
+            height: 0;
+            border-left: 6px solid transparent;
+            border-right: 6px solid transparent;
+            border-bottom: 10px solid white;
+            position: absolute;
+            transform-origin: center;
+        }
+        .marker {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            color: white;
+            text-align: center;
+            line-height: 20px;
+            font-size: 12px;
+        }
+        .start-marker {
+            background-color: #67C23A;
+        }
+        .end-marker {
+            background-color: #F56C6C;
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+        
+        <!-- 筛选面板 -->
+        <div class="filter-panel">
+            <div class="filter-header">
+            <span>轨迹筛选</span>
+            </div>
+            <div class="filter-container">
+                <select id="deptSelect" class="filter-select">
+                    <option value="">选择部门</option>
+                </select>
+                <select id="userSelect" class="filter-select">
+                <option value="">选择员工</option>
+            </select>
+            <select id="dateSelect" class="filter-select">
+                <option value="today">今天</option>
+                <option value="yesterday">昨天</option>
+                <option value="week">最近7天</option>
+                </select>
+            </div>
+        </div>
+
+    <!-- 图例 -->
+    <div class="legend" id="trajectoryLegend">
+        <div class="legend-header">轨迹图例</div>
+        <div id="legendContent"></div>
+    </div>
+
+    <script>
+      let map;
+        let trajectoryLayers = new Map(); // 存储所有轨迹图层
+        let markers = new Map(); // 存储所有标记点
+        
+        // 部门颜色方案
+        const departmentColors = {
+            '煤矿集团总部': '#3498db',
+            '安全管理部': '#e74c3c',
+            '生产技术部': '#2ecc71',
+            '财务部': '#f1c40f',
+            '人力资源部': '#9b59b6',
+            '销售部': '#1abc9c',
+            '矿区 1': '#e67e22',
+            '矿区 2': '#34495e',
+            '开采队': '#9b59b6',
+            '通风队': '#16a085',
+            '设备维修队': '#d35400',
+            '安全监察队': '#c0392b'
+        };
+
+        // 为子部门生成渐变色
+        function generateSubDepartmentColor(parentColor, index, total) {
+            const color = tinycolor(parentColor);
+            const hsl = color.toHsl();
+            // 调整亮度，保持色相不变
+            hsl.l = Math.min(0.9, hsl.l + (index / total) * 0.3);
+            return tinycolor(hsl).toHexString();
+        }
+
+        // 初始化地图
+        function initMap() {
+            map = new AMap.Map('map', {
+                zoom: 15,
+                center: [114.048298, 22.54443],
+                mapStyle: 'amap://styles/blue',
+                viewMode: '3D',
+            });
+        }
+
+        // 生成随机颜色
+        function getRandomColor() {
+            const letters = '0123456789ABCDEF';
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        // 更新图例
+        function updateLegend(trajectories) {
+            const legendContent = document.getElementById('legendContent');
+            legendContent.innerHTML = '';
+            
+            trajectories.forEach(traj => {
+                const legendItem = document.createElement('div');
+                legendItem.className = 'legend-item';
+                
+                const colorBox = document.createElement('div');
+                colorBox.className = 'legend-color';
+                colorBox.style.backgroundColor = traj.color;
+                
+                const label = document.createElement('span');
+                label.textContent = `${traj.deptName}-${traj.userName}`;
+                
+                legendItem.appendChild(colorBox);
+                legendItem.appendChild(label);
+                legendContent.appendChild(legendItem);
+            });
+        }
+
+        // 清除所有轨迹的函数
+        function clearAllTrajectories() {
+            trajectoryLayers.forEach((layer, deviceSn) => {
+                // 清除轨迹线
+                if (layer.polyline) {
+                    layer.polyline.setMap(null);
+                }
+                
+                // 清除箭头标记（如果存在）
+                if (layer.arrowMarkers && Array.isArray(layer.arrowMarkers)) {
+                    layer.arrowMarkers.forEach(marker => marker.setMap(null));
+                }
+                
+                // 清除起点终点标记（如果存在）
+                if (layer.startMarker) {
+                    layer.startMarker.setMap(null);
+                }
+                if (layer.endMarker) {
+                    layer.endMarker.setMap(null);
+                }
+            });
+            
+            // 清空轨迹图层集合
+            trajectoryLayers.clear();
+        }
+
+        // 绘制轨迹的函数
+        async function drawEnhancedTrajectory(deviceSn, userName, deptName, date) {
+            try {
+                const response = await fetch(`/fetch_user_locations?deviceSn=${deviceSn}&date=${date}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    if (!result.data || result.data.length === 0) {
+                        console.log(result.message);
+                        return;
+                    }
+                    
+                    // 创建轨迹线的坐标数组
+                    const path = result.data.map(point => {
+                        return [parseFloat(point.longitude), parseFloat(point.latitude)];
+                    });
+
+                    // 创建轨迹线
+                    const polyline = new AMap.Polyline({
+                        path: path,
+                        strokeColor: getDepartmentColor(deptName),
+                        strokeWeight: 6,
+                        strokeOpacity: 0.8,
+                        showDir: true,
+                        dirColor: getDepartmentColor(deptName)
+                    });
+
+                    // 添加到地图
+                    polyline.setMap(map);
+
+                    // 创建起点标记
+                    const startMarker = new AMap.Marker({
+                        position: path[0],
+                        content: '<div class="marker start-marker">起</div>',
+                        offset: new AMap.Pixel(-10, -10)
+                    });
+
+                    // 创建终点标记
+                    const endMarker = new AMap.Marker({
+                        position: path[path.length - 1],
+                        content: '<div class="marker end-marker">终</div>',
+                        offset: new AMap.Pixel(-10, -10)
+                    });
+
+                    // 添加标记到地图
+                    startMarker.setMap(map);
+                    endMarker.setMap(map);
+
+                    // 存储轨迹相关的所有对象
+                    trajectoryLayers.set(deviceSn, {
+                        polyline: polyline,
+                        startMarker: startMarker,
+                        endMarker: endMarker,
+                        data: result.data
+                    });
+
+                    // 添加点击事件监听器
+                    polyline.on('click', function(e) {
+                        const clickedLngLat = e.lnglat;
+                        
+                        // 检查是否点击到了轨迹点附近
+                        const points = result.data;
+                        const clickedPoint = points.find(point => {
+                            const distance = AMap.GeometryUtil.distance(
+                                [parseFloat(point.longitude), parseFloat(point.latitude)],
+                                [clickedLngLat.getLng(), clickedLngLat.getLat()]
+                            );
+                            return distance < 10; // 10米范围内认为点击到了轨迹点
+                        });
+
+                        if (clickedPoint) {
+                            // 显示信息窗体
+                            showInfoWindow(clickedPoint, userName, deptName);
+                        }
+                    });
+
+                    // 自适应地图视野到轨迹范围
+                    map.setFitView([polyline]);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        // 显示信息窗体的函数
+        function showInfoWindow(data, userName, deptName) {
+                  const content = `
+                <div style="padding: 15px; max-width: 300px;">
+                    <h4 style="margin: 0 0 10px 0; color: ${getDepartmentColor(deptName)};">
+                        ${deptName} - ${userName}
+                    </h4>
+                    <div style="margin-bottom: 5px;">
+                        <strong>时间：</strong>${new Date(data.timestamp).toLocaleString()}
+                          </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <strong>心率：</strong>${data.heartRate} bpm
+                          </div>
+                        <div>
+                            <strong>血压：</strong>${data.pressureHigh}/${data.pressureLow}
+                          </div>
+                        <div>
+                            <strong>血氧：</strong>${data.bloodOxygen}%
+                          </div>
+                        <div>
+                            <strong>体温：</strong>${data.temperature}°C
+                        </div>
+                        <div>
+                            <strong>步数：</strong>${data.step}
+                      </div>
+                        <div>
+                            <strong>距离：</strong>${(data.distance * 1000).toFixed(1)}m
+                    </div>
+                        <div>
+                            <strong>卡路里：</strong>${data.calorie.toFixed(2)}kcal
+                    </div>
+                        <div>
+                            <strong>海拔：</strong>${data.altitude.toFixed(1)}m
+                    </div>
+                    </div>
+                    <div style="margin-top: 10px;">
+                        <strong>位置：</strong>${data.latitude}, ${data.longitude}
+                  </div>
+              </div>
+      `;
+  
+            const infoWindow = new AMap.InfoWindow({
+        content: content,
+                offset: new AMap.Pixel(0, -30),
+                closeWhenClickMap: true,
+                autoMove: true
+            });
+
+            infoWindow.open(map, [parseFloat(data.longitude), parseFloat(data.latitude)]);
+        }
+
+        // 获取部门颜色
+        function getDepartmentColor(deptName) {
+            return departmentColors[deptName] || getRandomColor();
+        }
+
+        // 计算角度
+        function calculateAngle(point1, point2) {
+            const dx = point2[0] - point1[0];
+            const dy = point2[1] - point1[1];
+            return Math.atan2(dy, dx) * 180 / Math.PI;
+        }
+
+        // 修改加载部门数据函数
+        async function loadDepartments() {
+            try {
+                const response = await fetch('/get_departments?orgId={{ customerId }}');
+                const data = await response.json();
+        const deptSelect = document.getElementById('deptSelect');
+
+        deptSelect.innerHTML = '<option value="">选择部门</option>';
+
+                function addDepartmentOptions(departments, level = 0, parentColor = null) {
+                    departments.forEach((dept, index) => {
+                const option = document.createElement('option');
+                option.value = dept.id;
+                        
+                        // 确定部门颜色
+                        let deptColor;
+                        if (level === 0) {
+                            deptColor = departmentColors[dept.name] || getRandomColor();
+                            departmentColors[dept.name] = deptColor;
+                        } else {
+                            deptColor = generateSubDepartmentColor(parentColor, index, departments.length);
+                            departmentColors[dept.name] = deptColor;
+                        }
+                        
+                const indent = '　'.repeat(level);
+                        const colorBox = `<span class="dept-color-indicator" style="background-color: ${deptColor};"></span>`;
+                        option.innerHTML = colorBox + indent + dept.name;
+                deptSelect.appendChild(option);
+
+                if (dept.children && dept.children.length > 0) {
+                            addDepartmentOptions(dept.children, level + 1, deptColor);
+                }
+            });
+        }
+
+                if (data.success && data.data) {
+                    addDepartmentOptions(data.data);
+                }
+                
+        deptSelect.style.fontFamily = 'monospace';
+                
+            } catch (error) {
+                console.error('加载部门失败:', error);
+            }
+        }
+
+        // 加载用户数据
+        async function loadUsers(deptId) {
+            try {
+            const response = await fetch(`/fetch_users?orgId=${deptId}`);
+            const data = await response.json();
+                const userSelect = document.getElementById('userSelect');
+
+                userSelect.innerHTML = '<option value="">选择员工</option>';
+                data.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.device_sn;
+                    option.textContent = user.user_name;
+                    userSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('加载用户失败:', error);
+            }
+        }
+
+        // 事件监听
+        document.getElementById('deptSelect').addEventListener('change', async (e) => {
+            const deptId = e.target.value;
+            clearAllTrajectories();
+            if (deptId) {
+                await loadUsers(deptId);
+                const response = await fetch(`/fetch_users?orgId=${deptId}`);
+                const users = await response.json();
+                for (const user of users) {
+                    if (user.device_sn) {
+                        await drawEnhancedTrajectory(user.device_sn, user.user_name, e.target.options[e.target.selectedIndex].text, document.getElementById('dateSelect').value);
+                    }
+                }
+                map.setFitView();
+            }
+        });
+
+        document.getElementById('userSelect').addEventListener('change', async (e) => {
+            const deviceSn = e.target.value;
+            const deptSelect = document.getElementById('deptSelect');
+            clearAllTrajectories();
+            if (deviceSn) {
+                await drawEnhancedTrajectory(deviceSn, e.target.options[e.target.selectedIndex].text, deptSelect.options[deptSelect.selectedIndex].text, document.getElementById('dateSelect').value);
+                map.setFitView();
+            }
+        });
+
+        document.getElementById('dateSelect').addEventListener('change', async (e) => {
+            // 根据选择的日期重新加载轨迹
+            const deptSelect = document.getElementById('deptSelect');
+            const userSelect = document.getElementById('userSelect');
+            if (deptSelect.value) {
+                clearAllTrajectories();
+                if (userSelect.value) {
+                    await drawEnhancedTrajectory(userSelect.value, userSelect.options[userSelect.selectedIndex].text, deptSelect.options[deptSelect.selectedIndex].text, e.target.value);
+                } else {
+                    const response = await fetch(`/fetch_users?orgId=${deptSelect.value}`);
+                    const users = await response.json();
+                    for (const user of users) {
+                        if (user.device_sn) {
+                            await drawEnhancedTrajectory(user.device_sn, user.user_name, deptSelect.options[deptSelect.selectedIndex].text, e.target.value);
+                        }
+                    }
+                }
+                map.setFitView();
+            }
+        });
+
+        // 初始化
+        initMap();
+        loadDepartments();
+</script>
+</body>
+</html>

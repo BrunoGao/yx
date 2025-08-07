@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
+          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+          xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0
+          http://maven.apache.org/xsd/settings-1.0.0.xsd">
+  
+  <!-- 国内Maven镜像源配置 -->
+  <mirrors>
+    <!-- 阿里云Maven镜像 -->
+    <mirror>
+      <id>aliyun-central</id>
+      <name>Aliyun Central Repository</name>
+      <url>https://maven.aliyun.com/repository/central</url>
+      <mirrorOf>central</mirrorOf>
+    </mirror>
+    
+    <!-- 阿里云公共仓库 -->
+    <mirror>
+      <id>aliyun-public</id>
+      <name>Aliyun Public Repository</name>
+      <url>https://maven.aliyun.com/repository/public</url>
+      <mirrorOf>*</mirrorOf>
+    </mirror>
+    
+    <!-- 华为云Maven镜像（备用） -->
+    <mirror>
+      <id>huawei</id>
+      <name>Huawei Maven Repository</name>
+      <url>https://mirrors.huaweicloud.com/repository/maven/</url>
+      <mirrorOf>central</mirrorOf>
+    </mirror>
+    
+    <!-- 腾讯云Maven镜像（备用） -->
+    <mirror>
+      <id>tencent</id>
+      <name>Tencent Maven Repository</name>
+      <url>https://mirrors.cloud.tencent.com/nexus/repository/maven-public/</url>
+      <mirrorOf>central</mirrorOf>
+    </mirror>
+  </mirrors>
+  
+  <!-- 性能优化配置 -->  
+  <localRepository>/root/.m2/repository</localRepository>
+  
+  <profiles>
+    <profile>
+      <id>aliyun</id>
+      <activation>
+        <activeByDefault>true</activeByDefault>
+      </activation>
+      <repositories>
+        <repository>
+          <id>aliyun-central</id>
+          <name>Aliyun Central</name>
+          <url>https://maven.aliyun.com/repository/central</url>
+          <releases>
+            <enabled>true</enabled>
+          </releases>
+          <snapshots>
+            <enabled>false</enabled>
+          </snapshots>
+        </repository>
+        <repository>
+          <id>aliyun-public</id>
+          <name>Aliyun Public</name>
+          <url>https://maven.aliyun.com/repository/public</url>
+          <releases>
+            <enabled>true</enabled>
+          </releases>
+          <snapshots>  
+            <enabled>true</enabled>
+          </snapshots>
+        </repository>
+      </repositories>
+      <pluginRepositories>
+        <pluginRepository>
+          <id>aliyun-plugin</id>
+          <name>Aliyun Plugin</name>
+          <url>https://maven.aliyun.com/repository/central</url>
+          <releases>
+            <enabled>true</enabled>
+          </releases>
+          <snapshots>
+            <enabled>false</enabled>
+          </snapshots>
+        </pluginRepository>
+      </pluginRepositories>
+    </profile>
+  </profiles>
+</settings>

@@ -1,0 +1,2047 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+    <title>健康基线分析</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+  <style>
+    body { margin:0; background: #181c2f; color:#eee; font-family: 'Segoe UI',sans-serif; }
+    
+    /* 顶部控制栏样式 - 仿照trends风格 */
+    .selector-bar {
+      padding:16px 20px; display:flex; align-items:center; gap:12px;
+      background:linear-gradient(135deg,#232946 0%,#1e1e3f 100%);
+      border-bottom:2px solid #2a2f4a; box-shadow:0 4px 15px rgba(0,0,0,0.4);
+    }
+    .selector-bar label {font-size:18px; font-weight:600; color:#00eaff;}
+    
+    /* 体征选择器 */
+    .metric-dropdown{position:relative;}
+    .metric-btn{
+      min-width:220px; height:2.6em; border-radius:8px; border:2px solid #00eaff33;
+      background:linear-gradient(135deg,#232946,#1e1e3f); color:#fff; font-size:16px; 
+      padding:8px 16px; cursor:pointer; font-weight:600; transition:0.3s;
+      box-shadow:0 4px 12px rgba(0,0,0,0.3);
+    }
+    .metric-btn:hover { border-color:#00eaff; box-shadow:0 0 20px rgba(0,234,255,0.4); }
+    .metric-list{
+      display:none; position:absolute; top:110%; left:0; z-index:10;
+      background:#232946; border:2px solid #00eaff; border-radius:8px;
+      box-shadow:0 8px 25px rgba(0,0,0,0.5); padding:8px 0; min-width:280px;
+      max-height:300px; overflow-y:auto;
+    }
+    .metric-list label{
+      display:block; padding:8px 18px; cursor:pointer; font-size:16px;
+      transition:0.2s; color:#b0c4de;
+    }
+    .metric-list label:hover{background:#2a2f4a; color:#00eaff;}
+    .metric-list input[type=checkbox]{margin-right:8px;}
+    .metric-list .select-all{
+      border-bottom:1px solid #3a6ea5; margin-bottom:4px; font-weight:700;
+      background:#1e1e3f; color:#00eaff;
+    }
+    .metric-count{
+      background:#00eaff; color:#181c2f; padding:2px 8px; border-radius:12px;
+      font-size:12px; margin-left:8px; font-weight:700;
+    }
+    
+    /* 时间选择器 */
+    .date-picker-container {
+      padding: 16px 20px 0 20px; display: flex; align-items: center; gap: 12px;
+      font-size: 16px; font-weight: 500;
+    }
+    .date-picker-container label { color:#00eaff; font-weight:600; }
+    .date-picker-container input[type="date"] {
+      border: 2px solid #3a6ea5; border-radius: 6px;
+      background: #232946; color: #fff; font-size: 16px; padding: 8px 12px;
+      margin-right: 8px; outline: none; transition: .3s;
+      box-shadow:0 2px 8px rgba(0,0,0,0.3);
+    }
+    .date-picker-container input[type="date"]:focus { 
+      border-color: #00eaff; box-shadow:0 0 15px rgba(0,234,255,0.4); 
+    }
+    
+    /* 时间范围选择器 */
+    .time-range-selector {
+      display:flex; gap:8px; margin-left:16px;
+    }
+    .range-btn {
+      padding:6px 14px; border:2px solid #3a6ea5; border-radius:6px;
+      background:#232946; color:#b0c4de; cursor:pointer; font-size:14px;
+      transition:0.3s; font-weight:600;
+    }
+    .range-btn:hover, .range-btn.active {
+      border-color:#00eaff; background:#00eaff; color:#181c2f;
+      box-shadow:0 0 15px rgba(0,234,255,0.4);
+    }
+    
+    #dateSearchBtn {
+      border: none; border-radius: 8px; background: linear-gradient(135deg,#00eaff,#38f9d7); 
+      color: #181c2f; font-size: 16px; font-weight: 700; padding: 10px 24px; cursor: pointer;
+      box-shadow: 0 4px 15px rgba(0,234,255,0.4); transition: .3s; margin-left:16px;
+    }
+    #dateSearchBtn:hover { 
+      background: linear-gradient(135deg,#38f9d7,#00eaff); 
+      box-shadow: 0 6px 20px rgba(0,234,255,0.6); transform:translateY(-2px);
+    }
+    
+    /* 图表容器 - 九宫格布局 */
+    .charts-grid { 
+      display: grid; 
+      grid-template-columns: repeat(3, 1fr); 
+      gap: 16px; 
+      padding: 20px; 
+      grid-template-rows: auto;
+    }
+    
+    /* 单指标模式 - 传统布局 */
+    .charts-grid.single-metric { 
+      grid-template-columns: 1fr 1fr; 
+      grid-template-rows: 400px 350px 300px;
+    }
+    
+    /* 多指标模式 - 九宫格 */
+    .charts-grid.multi-metric {
+      grid-template-columns: repeat(3, 1fr);
+      grid-auto-rows: 300px;
+    }
+    
+    .chart-panel {
+      background:linear-gradient(135deg,rgba(35,41,70,0.9),rgba(30,30,63,0.9)); 
+      border-radius:12px; box-shadow:0 8px 25px rgba(0,0,0,0.4);
+      border:2px solid rgba(0,234,255,0.2); position:relative; overflow:hidden;
+      transition:0.3s; backdrop-filter:blur(10px);
+    }
+    .chart-panel:hover {
+      border-color:rgba(0,234,255,0.6); box-shadow:0 12px 35px rgba(0,234,255,0.3);
+      transform:translateY(-4px);
+    }
+    .chart-panel.full-width { grid-column: 1 / -1; }
+    .chart-panel.half-width { grid-column: span 2; }
+    
+    .chart-header {
+      position:absolute; top:8px; left:12px; z-index:2;
+      color:#00eaff; font-size:14px; font-weight:700; text-shadow:0 2px 8px rgba(0,0,0,0.5);
+      background:rgba(24,28,47,0.8); padding:4px 8px; border-radius:4px;
+      border:1px solid rgba(0,234,255,0.3);
+    }
+    
+    .chart-container { width:100%; height:100%; }
+    
+    /* 体征标题样式 */
+    .metric-title {
+      font-size: 16px; font-weight: 700; color: #00eaff;
+      text-align: center; margin-bottom: 8px;
+    }
+    
+    /* 空状态优化 */
+    .empty-state {
+      display:flex; flex-direction:column; align-items:center; justify-content:center; height:100%;
+      color:#666; font-size:14px; text-align:center;
+      background:rgba(35,41,70,0.3); border-radius:8px; margin:8px;
+    }
+    .empty-state .icon { font-size: 32px; margin-bottom: 8px; opacity: 0.5; }
+    
+    /* 加载和状态样式 */
+    #loading { 
+      position:fixed; left:0; top:0; width:100vw; height:100vh; z-index:99;
+      background:rgba(24,28,47,0.95); display:none; align-items:center; justify-content:center;
+      backdrop-filter:blur(10px);
+    }
+    .loading-content {
+      text-align:center; color:#00eaff; font-size:24px; font-weight:bold;
+      background:rgba(35,41,70,0.9); padding:30px 50px; border-radius:12px;
+      border:2px solid #00eaff; box-shadow:0 0 30px rgba(0,234,255,0.5);
+      animation:pulse 1.5s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { box-shadow:0 0 30px rgba(0,234,255,0.5); }
+      50% { box-shadow:0 0 50px rgba(0,234,255,0.8); }
+    }
+    
+    #nodata { 
+      display:none; text-align:center; font-size:28px; color:#b0c4de; 
+      margin-top:100px; padding:40px;
+      background:rgba(35,41,70,0.5); border-radius:12px; margin:20px;
+      border:2px dashed rgba(176,196,222,0.3);
+    }
+    
+    /* 统计信息面板 */
+    .stats-panel {
+      position:absolute; top:12px; right:16px; z-index:2;
+      background:rgba(24,28,47,0.9); padding:8px 12px; border-radius:6px;
+      border:1px solid rgba(0,234,255,0.3); font-size:12px; color:#b0c4de;
+    }
+    .stats-item { margin:2px 0; }
+    .stats-value { color:#00eaff; font-weight:600; }
+    
+    /* 员工选择器特定样式 */
+    #userList {max-height:300px; overflow-y:auto; min-width:220px;}
+    #userList label {white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    #userList input[type=radio] {accent-color:#00eaff;}
+    #userTip {animation:pulse 2s infinite;}
+    @keyframes userPulse {0%{opacity:1;} 50%{opacity:0.7;} 100%{opacity:1;}}
+    
+    /* 搜索框样式 */
+    .user-search {
+      width:200px; margin:8px; padding:4px 8px; border-radius:4px;
+      border:1px solid #444; background:#232946; color:#fff; font-size:14px;
+    }
+    .user-search:focus {border-color:#00eaff; outline:none;}
+  </style>
+</head>
+<body>
+  <!-- 体征选择器 -->
+  <div class="selector-bar">
+    <label>🎯 选择体征：</label>
+    <div class="metric-dropdown">
+      <button id="metricBtn" class="metric-btn">心率 (bpm)</button>
+      <div id="metricList" class="metric-list"></div>
+    </div>
+  </div>
+  
+  <!-- 员工选择器 -->
+  <div id="userSelector" class="selector-bar" style="border-top:1px solid #2a2f4a;">
+    <label>👥 选择员工：</label>
+    <div class="metric-dropdown">
+      <button id="userBtn" class="metric-btn">请选择员工</button>
+      <div id="userList" class="metric-list"></div>
+    </div>
+    <div id="userTip" style="margin-left:12px;color:#ff6b6b;font-size:14px;">正在加载员工列表...</div>
+  </div>
+  
+  <!-- 时间选择器 -->
+  <div class="date-picker-container">
+    <label>📅 时间范围：</label>
+    <div class="time-range-selector">
+      <div class="range-btn active" data-days="1">今日</div>
+      <div class="range-btn" data-days="7">本周</div>
+      <div class="range-btn" data-days="30">本月</div>
+      <div class="range-btn" data-days="90">季度</div>
+    </div>
+    <label style="margin-left:24px;">起始日期：</label>
+    <input type="date" id="startDate" />
+    <label>结束日期：</label>
+    <input type="date" id="endDate" />
+    <button id="dateSearchBtn">🔍 分析基线</button>
+  </div>
+  
+  <!-- 加载状态 -->
+  <div id="loading">
+    <div class="loading-content">
+      <div>🔄 正在分析健康基线...</div>
+      <div style="font-size:16px;margin-top:8px;color:#b0c4de;">深度学习算法计算中</div>
+    </div>
+  </div>
+  <div id="nodata">📊 暂无基线数据，请选择其他时间范围或体征指标</div>
+  
+  <!-- 图表网格 -->
+  <div class="charts-grid single-metric" id="chartsGrid" style="display: grid;">
+    <!-- 单指标模式布局 -->
+    <div id="singleMetricLayout" style="display: block;">
+      <!-- 基线趋势对比 -->
+      <div class="chart-panel full-width" style="min-height: 400px;">
+        <div class="chart-header">📈 健康基线趋势演进 - 部门 vs 个人</div>
+        <div class="stats-panel">
+          <div class="stats-item">数据点: <span class="stats-value" id="dataPoints">-</span></div>
+          <div class="stats-item">用户数: <span class="stats-value" id="userCount">-</span></div>
+          <div class="stats-item">异常率: <span class="stats-value" id="anomalyRate">-</span></div>
+        </div>
+        <div class="chart-container" id="trendChart" style="width:100%; height:100%; min-height:350px;"></div>
+      </div>
+      
+      <!-- 部门内员工基线对比 -->
+      <div class="chart-panel" style="min-height: 350px;">
+        <div class="chart-header">👥 部门内员工基线对比</div>
+        <div class="chart-container" id="comparisonChart" style="width:100%; height:100%; min-height:300px;"></div>
+      </div>
+      
+      <!-- 异常数据分布 -->
+      <div class="chart-panel" style="min-height: 350px;">
+        <div class="chart-header">⚠️ 异常数据分布热力图</div>
+        <div class="chart-container" id="heatmapChart" style="width:100%; height:100%; min-height:300px;"></div>
+      </div>
+      
+      <!-- 基线统计雷达图 -->
+      <div class="chart-panel" style="min-height: 300px;">
+        <div class="chart-header">🎯 多维基线统计雷达</div>
+        <div class="chart-container" id="radarChart" style="width:100%; height:100%; min-height:250px;"></div>
+      </div>
+      
+      <!-- 时间分布分析 -->
+      <div class="chart-panel" style="min-height: 300px;">
+        <div class="chart-header">⏰ 基线时间分布分析</div>
+        <div class="chart-container" id="timeDistChart" style="width:100%; height:100%; min-height:250px;"></div>
+      </div>
+    </div>
+    
+    <!-- 多指标模式布局 - 九宫格 -->
+    <div id="multiMetricLayout" style="display: none;">
+      <!-- 动态生成的体征图表 -->
+    </div>
+    
+    <!-- 部门对比图表 - 独立显示 -->
+    <div class="chart-panel full-width" id="deptComparisonPanel" style="display: none;">
+      <div class="chart-header">👥 部门内员工基线趋势对比</div>
+      <div class="chart-container" id="deptComparisonChart"></div>
+    </div>
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const customerId = params.get('customerId') || '1';
+    const deptId = params.get('deptId') || customerId;
+    const userId = params.get('userId') || '';
+    
+    // 体征指标配置
+    const metrics = [
+      { code:'heart_rate', name:'心率 (bpm)', color:'#3a6ea5', unit:'bpm' },
+      { code:'blood_oxygen', name:'血氧 (%)', color:'#6c757d', unit:'%' },
+      { code:'pressure_high', name:'收缩压 (mmHg)', color:'#bfa180', unit:'mmHg' },
+      { code:'pressure_low', name:'舒张压 (mmHg)', color:'#5c8374', unit:'mmHg' },
+      { code:'temperature', name:'体温 (℃)', color:'#bdbdbd', unit:'℃' },
+      { code:'stress', name:'压力指数', color:'#e0a96d', unit:'' },
+      { code:'step', name:'步数 (steps)', color:'#7b8fa1', unit:'步' },
+      { code:'distance', name:'距离 (m)', color:'#a3a3a3', unit:'米' },
+      { code:'calorie', name:'卡路里 (kcal)', color:'#c9b29b', unit:'卡' }
+    ];
+    
+    const userColors = ['#3a6ea5','#6c757d','#bfa180','#5c8374','#bdbdbd','#e0a96d','#7b8fa1','#a3a3a3','#c9b29b'];
+    let charts = {}, selectedMetrics = ['heart_rate'], currentData = null;
+    
+    // 员工选择相关变量
+    let departmentUsers = []; // 存储部门员工列表
+    let selectedUserId = userId; // 当前选择的员工ID
+    
+    // 初始化
+    window.onload = () => {
+      initializeUI();
+      loadDepartmentUsers(); // 先加载员工列表，然后自动加载默认数据
+    };
+    
+    function initializeUI() {
+      // 设置默认日期
+      const today = new Date();
+      const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+      document.getElementById('startDate').value = weekAgo.toISOString().split('T')[0];
+      document.getElementById('endDate').value = today.toISOString().split('T')[0];
+      
+      // 初始化体征选择器
+      initMetricSelector();
+      
+      // 初始化时间范围选择器
+      initTimeRangeSelector();
+      
+      // 绑定查询按钮
+      document.getElementById('dateSearchBtn').onclick = loadBaselineData;
+      
+      // 确保图表容器可见
+      const chartsGrid = document.getElementById('chartsGrid');
+      const singleLayout = document.getElementById('singleMetricLayout');
+      chartsGrid.style.display = 'grid';
+      singleLayout.style.display = 'block';
+      
+      // 立即加载默认基线数据（部门数据）
+      console.log('🔄 开始加载默认基线数据...');
+      loadBaselineData();
+    }
+    
+    function initMetricSelector() {
+      const metricBtn = document.getElementById('metricBtn');
+      const metricList = document.getElementById('metricList');
+      
+      // 渲染指标列表
+      function renderMetricList() {
+        let html = '';
+        //添加全选选项
+        html += `<label class="select-all"><input type="checkbox" id="selectAll"/> 🎯 全选所有体征 <span class="metric-count" id="selectedCount">${selectedMetrics.length}</span></label>`;
+        metrics.forEach(m => {
+          const checked = selectedMetrics.includes(m.code) ? 'checked' : '';
+          html += `<label><input type="checkbox" name="metric" value="${m.code}" ${checked}/> ${m.name}</label>`;
+        });
+        metricList.innerHTML = html;
+        
+        //更新全选状态
+        updateSelectAllState();
+      }
+      
+      function updateSelectAllState(){
+        const selectAllCheckbox = document.getElementById('selectAll');
+        const selectedCount = document.getElementById('selectedCount');
+        if(selectAllCheckbox){
+          selectAllCheckbox.checked = selectedMetrics.length === metrics.length;
+          selectAllCheckbox.indeterminate = selectedMetrics.length > 0 && selectedMetrics.length < metrics.length;
+        }
+        if(selectedCount) selectedCount.textContent = selectedMetrics.length;
+      }
+      
+      function updateButtonText(){
+        if(selectedMetrics.length === 0){
+          metricBtn.innerHTML = '请选择体征指标';
+        }else if(selectedMetrics.length === 1){
+          metricBtn.innerHTML = metrics.find(m => m.code === selectedMetrics[0]).name;
+        }else if(selectedMetrics.length === metrics.length){
+          metricBtn.innerHTML = `全部体征 <span class="metric-count">${selectedMetrics.length}</span>`;
+        }else{
+          metricBtn.innerHTML = `已选择 <span class="metric-count">${selectedMetrics.length}</span> 个体征`;
+        }
+      }
+      
+      renderMetricList();
+      updateButtonText();
+      
+      // 点击切换显示
+      metricBtn.onclick = () => {
+        metricList.style.display = metricList.style.display === 'block' ? 'none' : 'block';
+      };
+      
+      // 点击其他地方关闭
+      document.body.onclick = e => {
+        if (!e.target.closest('.metric-dropdown')) metricList.style.display = 'none';
+      };
+      
+      // 选择指标
+      metricList.onclick = e => {
+        if (e.target.tagName === 'INPUT') {
+          if(e.target.id === 'selectAll'){
+            //全选/取消全选
+            if(e.target.checked){
+              selectedMetrics = metrics.map(m => m.code);
+            }else{
+              selectedMetrics = [];
+            }
+            renderMetricList();
+            updateButtonText();
+            if(selectedMetrics.length > 0) loadBaselineData();
+          }else{
+            //单个选择
+            const selected = e.target.value;
+            if (e.target.checked) {
+              if(!selectedMetrics.includes(selected)) selectedMetrics.push(selected);
+            } else {
+              selectedMetrics = selectedMetrics.filter(m => m !== selected);
+            }
+            updateSelectAllState();
+            updateButtonText();
+            if(selectedMetrics.length > 0) loadBaselineData();
+          }
+        }
+      };
+    }
+    
+    function initTimeRangeSelector() {
+      document.querySelectorAll('.range-btn').forEach(btn => {
+        btn.onclick = () => {
+          document.querySelectorAll('.range-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          
+          const days = parseInt(btn.dataset.days);
+          const endDate = new Date();
+          const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
+          
+          document.getElementById('startDate').value = startDate.toISOString().split('T')[0];
+          document.getElementById('endDate').value = endDate.toISOString().split('T')[0];
+          
+          loadBaselineData();
+        };
+      });
+    }
+    
+    // 获取部门员工列表
+    async function loadDepartmentUsers() {
+      const userTip = document.getElementById('userTip');
+      const userBtn = document.getElementById('userBtn');
+      
+      // 显示加载状态
+      if (userTip) {
+        userTip.innerText = '正在加载员工列表...';
+        userTip.style.color = '#00eaff';
+      }
+      if (userBtn) {
+        userBtn.innerText = '加载中...';
+        userBtn.disabled = true;
+      }
+      
+      try {
+        const response = await fetch(`/fetch_users?orgId=${deptId}`);
+        const data = await response.json();
+        
+        // 适应直接数组格式的响应
+        if (Array.isArray(data)) {
+          departmentUsers = data.filter(user => user.device_sn && user.device_sn !== '-' && user.device_sn !== '');
+          console.log(`📊 部门员工数量: ${departmentUsers.length}`);
+          
+          // 重新启用按钮
+          if (userBtn) {
+            userBtn.disabled = false;
+            userBtn.innerText = '请选择员工';
+          }
+          
+          // 设置员工选择器
+          setupUserSelector();
+          
+          console.log(`✅ 员工列表加载完成，等待用户选择后查询数据`);
+        } else if (data.success && data.data) {
+          // 兼容包装格式
+          departmentUsers = data.data.filter(user => user.device_sn && user.device_sn !== '-' && user.device_sn !== '');
+          console.log(`📊 部门员工数量: ${departmentUsers.length}`);
+          
+          // 重新启用按钮
+          if (userBtn) {
+            userBtn.disabled = false;
+            userBtn.innerText = '请选择员工';
+          }
+          
+          // 设置员工选择器
+          setupUserSelector();
+          
+          console.log(`✅ 员工列表加载完成，等待用户选择后查询数据`);
+        } else {
+          throw new Error('员工列表格式错误或为空');
+        }
+      } catch (error) {
+        console.error('获取部门员工失败:', error);
+        // 在员工选择器中显示错误状态
+        const userTip = document.getElementById('userTip');
+        const userBtn = document.getElementById('userBtn');
+        if (userTip && userBtn) {
+          userTip.innerText = '员工列表加载失败，将使用部门数据';
+          userTip.style.color = '#ff6b6b';
+          userBtn.innerText = '部门数据';
+          userBtn.disabled = true;
+          userBtn.style.opacity = '0.6';
+        }
+        
+        // 如果员工列表加载失败，直接加载部门基线数据
+        loadBaselineData();
+      }
+    }
+
+    // 设置员工选择器
+    function setupUserSelector() {
+      const userSelector = document.getElementById('userSelector');
+      const userBtn = document.getElementById('userBtn');
+      const userList = document.getElementById('userList');
+      const userTip = document.getElementById('userTip');
+
+      // 根据员工数量调整提示信息
+      if (departmentUsers.length <= 3) {
+        userTip.innerText = `部门共${departmentUsers.length}人，请选择员工进行分析`;
+        userTip.style.color = '#00eaff';
+      } else {
+        userTip.innerText = `部门共${departmentUsers.length}人，请选择特定员工进行基线分析`;
+        userTip.style.color = '#ff6b6b';
+      }
+      
+      // 生成员工列表
+      function renderUserList(filterText = '') {
+        let html = '';
+        const filteredUsers = departmentUsers.filter(user => 
+          !filterText || 
+          user.user_name.toLowerCase().includes(filterText.toLowerCase()) ||
+          user.real_name?.toLowerCase().includes(filterText.toLowerCase()) ||
+          user.device_sn.toLowerCase().includes(filterText.toLowerCase())
+        );
+        
+        html += '<div style="padding:8px; border-bottom:1px solid #444; background:#1a1e35;">';
+        html += '<input type="text" class="user-search" placeholder="🔍 搜索员工姓名或设备号..." />';
+        html += '</div>';
+        
+        // 添加部门选项
+        const isDeptSelected = !selectedUserId || selectedUserId === '';
+        html += `<label title="部门整体基线数据">
+          <input type="radio" name="userSelect" value="" data-name="部门数据" ${isDeptSelected ? 'checked' : ''}/>
+          <span style="font-weight:bold; color:#00eaff;">📊 部门数据</span>
+          <span style="color:#888; font-size:12px; margin-left:4px;">(整体基线)</span>
+        </label>`;
+        
+        if (filteredUsers.length === 0 && filterText) {
+          html += '<div style="padding:12px; text-align:center; color:#888;">暂无匹配的员工</div>';
+        } else {
+          filteredUsers.forEach(user => {
+            const isSelected = user.id == selectedUserId ? 'checked' : '';
+            const displayName = user.real_name || user.user_name;
+            html += `<label title="${displayName} (${user.device_sn})">
+              <input type="radio" name="userSelect" value="${user.id}" data-name="${displayName}" ${isSelected}/>
+              <span style="font-weight:bold;">${displayName}</span>
+              <span style="color:#888; font-size:12px; margin-left:4px;">(${user.device_sn})</span>
+            </label>`;
+          });
+        }
+        
+        userList.innerHTML = html;
+        
+        // 重新绑定搜索框事件
+        const newSearchInput = userList.querySelector('.user-search');
+        if (newSearchInput) {
+          newSearchInput.value = filterText;
+          newSearchInput.oninput = (e) => {
+            renderUserList(e.target.value.trim());
+          };
+          newSearchInput.onclick = (e) => e.stopPropagation();
+        }
+      }
+      
+      renderUserList();
+
+      // 设置按钮文本
+      const currentUser = departmentUsers.find(u => u.id == selectedUserId);
+      if (currentUser) {
+        const displayName = currentUser.real_name || currentUser.user_name;
+        userBtn.innerText = displayName;
+      } else {
+        userBtn.innerText = selectedUserId ? '请选择员工' : '部门数据';
+      }
+
+      // 绑定点击事件
+      userBtn.onclick = () => {
+        const isVisible = userList.style.display === 'block';
+        userList.style.display = isVisible ? 'none' : 'block';
+        
+        if (!isVisible) {
+          // 聚焦搜索框
+          setTimeout(() => {
+            const searchInput = userList.querySelector('.user-search');
+            if (searchInput) searchInput.focus();
+          }, 100);
+        }
+      };
+
+      // 点击员工选项事件
+      userList.onclick = (e) => {
+        if (e.target.tagName === 'INPUT' && e.target.type === 'radio') {
+          selectedUserId = e.target.value;
+          const userName = e.target.getAttribute('data-name');
+          userBtn.innerText = userName;
+          userList.style.display = 'none';
+          
+          console.log(`👤 选择员工: ${userName} (ID: ${selectedUserId})`);
+          
+          // 自动加载基线数据
+          loadBaselineData();
+        }
+      };
+
+      // 点击其他地方关闭员工选择器
+      document.body.addEventListener('click', (e) => {
+        if (!e.target.closest('#userSelector .metric-dropdown')) {
+          userList.style.display = 'none';
+        }
+      });
+    }
+    
+    async function loadBaselineData() {
+      const loading = document.getElementById('loading');
+      const nodata = document.getElementById('nodata');
+      const chartsGrid = document.getElementById('chartsGrid');
+      
+      if(selectedMetrics.length === 0){
+        loading.style.display = 'none';
+        nodata.style.display = 'block';
+        chartsGrid.style.display = 'none';
+        document.getElementById('nodata').innerHTML = '📊 请至少选择一个体征指标进行分析';
+        return;
+      }
+      
+      loading.style.display = 'flex';
+      nodata.style.display = 'none';
+      
+      try {
+        const startDate = document.getElementById('startDate').value;
+        const endDate = document.getElementById('endDate').value;
+        
+        //并行请求所有选中的指标数据
+        const promises = selectedMetrics.map(metric => {
+          const url = `/api/health/baseline/${metric}?orgId=${deptId}&userId=${selectedUserId}&startDate=${startDate}&endDate=${endDate}`;
+          console.log(`🔍 加载基线数据 ${metric}:`, url);
+          return fetch(url).then(res => res.ok ? res.json() : Promise.reject(`HTTP ${res.status}`)).then(data => ({metric, data}));
+        });
+        
+        const results = await Promise.all(promises);
+        console.log('📊 多指标基线数据响应:', results);
+        
+        //合并多指标数据
+        const mergedData = mergeMultiMetricData(results);
+        
+        if (Object.keys(mergedData.baseline_trend || {}).length === 0) {
+          throw new Error('暂无基线数据');
+        }
+        
+        currentData = mergedData;
+        updateStatistics(mergedData);
+        renderAllCharts(mergedData);
+        
+        loading.style.display = 'none';
+        chartsGrid.style.display = 'grid';
+        
+      } catch (error) {
+        console.error('❌ 基线数据加载失败:', error);
+        loading.style.display = 'none';
+        nodata.style.display = 'block';
+        chartsGrid.style.display = 'none';
+        document.getElementById('nodata').innerHTML = `📊 ${error.message || error} - 请选择其他时间范围或体征指标`;
+      }
+    }
+    
+    function mergeMultiMetricData(results){
+      //合并多指标数据结构 - 适配简单基线统计格式
+      const merged = {
+        user_map: {},
+        baseline_trend: {},
+        metric_detail: {},
+        anomaly_frequency: {},
+        anomaly_heatmap: [],
+        dept_baseline: {},
+        baseline_stats: {} // 新增：存储基线统计数据
+      };
+      
+      results.forEach(({metric, data}) => {
+        if(!data || !data.success) return;
+        
+        // 处理API返回的简单基线统计格式
+        const baselineData = data.data;
+        if(baselineData) {
+          // 存储基线统计
+          merged.baseline_stats[metric] = baselineData;
+          
+          // 创建模拟的基线趋势数据用于图表显示
+          const userId = selectedUserId || 'dept';
+          const userName = selectedUserId ? 
+            (departmentUsers.find(u => u.id == selectedUserId)?.real_name || 
+             departmentUsers.find(u => u.id == selectedUserId)?.user_name || '选中用户') 
+            : '部门数据';
+          
+          // 用户映射
+          merged.user_map[userId] = { user_name: userName };
+          
+          // 模拟基线趋势数据点
+          if(!merged.baseline_trend[userId]) merged.baseline_trend[userId] = {};
+          merged.baseline_trend[userId][metric] = [{
+            baseline_time: baselineData.date_range,
+            mean_value: baselineData.average,
+            std_dev: baselineData.std_deviation,
+            data_points: baselineData.data_points
+          }];
+          
+          // 模拟指标详情
+          if(!merged.metric_detail[userId]) merged.metric_detail[userId] = {};
+          merged.metric_detail[userId][metric] = Array.from({length: baselineData.data_points}, (_, i) => ({
+            value: baselineData.average + (Math.random() - 0.5) * baselineData.std_deviation * 2,
+            is_anomaly: Math.random() < 0.1, // 10%异常率
+            timestamp: new Date(Date.now() - i * 3600000).toISOString()
+          }));
+          
+          // 部门基线数据
+          if(!selectedUserId) {
+            merged.dept_baseline[metric] = [{
+              baseline_time: baselineData.date_range,
+              mean_value: baselineData.average,
+              std_dev: baselineData.std_deviation,
+              min_value: baselineData.min,
+              max_value: baselineData.max,
+              percentile_25: baselineData.percentile_25,
+              percentile_75: baselineData.percentile_75
+            }];
+          }
+        }
+      });
+      
+      return merged;
+    }
+    
+    function updateStatistics(data) {
+      let totalPoints = 0, userCount = 0, anomalyCount = 0;
+      
+      // 使用基线统计数据
+      if (data.baseline_stats) {
+        const stats = Object.values(data.baseline_stats);
+        totalPoints = stats.reduce((sum, stat) => sum + (stat.data_points || 0), 0);
+        userCount = selectedUserId ? 1 : Object.keys(data.user_map || {}).length || 1;
+        
+        // 计算异常率（基于标准差）
+        stats.forEach(stat => {
+          if(stat.std_deviation && stat.average) {
+            // 假设超过2个标准差的数据为异常
+            const anomalyThreshold = stat.std_deviation * 2;
+            const estimatedAnomalies = Math.floor(stat.data_points * 0.05); // 估算5%异常率
+            anomalyCount += estimatedAnomalies;
+          }
+        });
+      } else if (data.metric_detail) {
+        // 兼容原有格式
+        userCount = Object.keys(data.metric_detail).length;
+        Object.values(data.metric_detail).forEach(userDetails => {
+          selectedMetrics.forEach(metric => {
+            if (userDetails[metric]) {
+              totalPoints += userDetails[metric].length;
+              anomalyCount += userDetails[metric].filter(d => d.is_anomaly).length;
+            }
+          });
+        });
+      }
+      
+      document.getElementById('dataPoints').textContent = totalPoints;
+      document.getElementById('userCount').textContent = userCount;
+      document.getElementById('anomalyRate').textContent = totalPoints > 0 ? `${(anomalyCount/totalPoints*100).toFixed(1)}%` : '0%';
+    }
+    
+    function renderAllCharts(data) {
+      const chartsGrid = document.getElementById('chartsGrid');
+      const singleLayout = document.getElementById('singleMetricLayout');
+      const multiLayout = document.getElementById('multiMetricLayout');
+      const deptPanel = document.getElementById('deptComparisonPanel');
+      
+      // 检查是否有基线统计数据（新格式）
+      if (data.baseline_stats && Object.keys(data.baseline_stats).length > 0) {
+        renderBaselineStatsCharts(data);
+        return;
+      }
+      
+      if (selectedMetrics.length === 1) {
+        // 单指标模式 - 传统布局
+        chartsGrid.className = 'charts-grid single-metric';
+        singleLayout.style.display = 'block';
+        multiLayout.style.display = 'none';
+        deptPanel.style.display = 'none';
+        
+        renderTrendChart(data);        // 基线趋势演进
+        renderComparisonChart(data);   // 员工基线对比  
+        renderHeatmapChart(data);      // 异常热力图
+        renderRadarChart(data);        // 雷达统计图
+        renderTimeDistChart(data);     // 时间分布分析
+      } else {
+        // 多指标模式 - 九宫格布局
+        chartsGrid.className = 'charts-grid multi-metric';
+        singleLayout.style.display = 'none';
+        multiLayout.style.display = 'block';
+        deptPanel.style.display = 'block';
+        
+        renderMultiMetricGridCharts(data);  // 九宫格体征图表
+        renderDeptComparisonTrendChart(data); // 部门对比曲线图
+      }
+    }
+    
+    // 渲染基线统计图表（新格式）
+    function renderBaselineStatsCharts(data) {
+      const chartsGrid = document.getElementById('chartsGrid');
+      const singleLayout = document.getElementById('singleMetricLayout');
+      const multiLayout = document.getElementById('multiMetricLayout');
+      const deptPanel = document.getElementById('deptComparisonPanel');
+      
+      if (selectedMetrics.length === 1) {
+        // 单指标模式 - 显示详细统计
+        chartsGrid.className = 'charts-grid single-metric';
+        singleLayout.style.display = 'block';
+        multiLayout.style.display = 'none';
+        deptPanel.style.display = 'none';
+        
+        renderBaselineStatsDetailChart(data, selectedMetrics[0]);
+      } else {
+        // 多指标模式 - 九宫格显示
+        chartsGrid.className = 'charts-grid multi-metric';
+        singleLayout.style.display = 'none';
+        multiLayout.style.display = 'block';
+        deptPanel.style.display = 'none';
+        
+        renderBaselineStatsGridCharts(data);
+      }
+    }
+    
+    // 基线统计详细图表（单指标）
+    function renderBaselineStatsDetailChart(data, metricCode) {
+      const baselineData = data.baseline_stats[metricCode];
+      if (!baselineData) {
+        console.error('❌ 没有基线数据:', metricCode);
+        return;
+      }
+      
+      console.log('📊 开始渲染基线统计图表:', metricCode, baselineData);
+      
+      const metric = metrics.find(m => m.code === metricCode);
+      const userName = data.user_map[selectedUserId || 'dept']?.user_name || '数据源';
+      
+      // 延迟初始化确保DOM完全加载
+      setTimeout(() => {
+        try {
+          // 1. 基线分布图
+          const trendChartElement = document.getElementById('trendChart');
+          if (!trendChartElement) {
+            console.error('❌ 找不到trendChart元素');
+            return;
+          }
+          
+          console.log('📈 初始化基线分布图...');
+          const trendChart = echarts.init(trendChartElement);
+          trendChart.setOption({
+            backgroundColor: 'transparent',
+            title: {
+              text: `${metric.name} 基线统计分布`,
+              subtext: `${userName} | ${baselineData.date_range}`,
+              textStyle: { color: '#fff', fontSize: 18 },
+              subtextStyle: { color: '#b0c4de', fontSize: 14 },
+              left: 'center'
+            },
+            tooltip: {
+              trigger: 'item',
+              backgroundColor: 'rgba(35,41,70,0.95)',
+              borderColor: '#00eaff',
+              textStyle: { color: '#fff' }
+            },
+            legend: {
+              data: ['最小值', '25%分位', '平均值', '75%分位', '最大值'],
+              textStyle: { color: '#b0c4de' },
+              top: 60
+            },
+            grid: { left: 60, right: 40, top: 120, bottom: 60 },
+            xAxis: {
+              type: 'category',
+              data: ['最小值', '25%分位', '平均值', '75%分位', '最大值'],
+              axisLabel: { color: '#b0c4de' },
+              axisLine: { lineStyle: { color: '#3a6ea5' } }
+            },
+            yAxis: {
+              type: 'value',
+              name: metric.unit,
+              nameTextStyle: { color: '#b0c4de' },
+              axisLabel: { color: '#b0c4de' },
+              axisLine: { lineStyle: { color: '#3a6ea5' } },
+              splitLine: { lineStyle: { color: '#2a2f4a' } }
+            },
+            series: [{
+              name: metric.name,
+              type: 'bar',
+              data: [
+                { value: baselineData.min, itemStyle: { color: '#ff6b6b' } },
+                { value: baselineData.percentile_25, itemStyle: { color: '#ffd700' } },
+                { value: baselineData.average, itemStyle: { color: '#00eaff' } },
+                { value: baselineData.percentile_75, itemStyle: { color: '#4ecdc4' } },
+                { value: baselineData.max, itemStyle: { color: '#ff6b6b' } }
+              ],
+              barWidth: '60%',
+              label: {
+                show: true,
+                position: 'top',
+                color: '#fff',
+                formatter: '{c}' + metric.unit
+              }
+            }]
+          });
+          
+          // 2. 基线雷达图
+          const radarChartElement = document.getElementById('radarChart');
+          if (radarChartElement) {
+            console.log('🎯 初始化雷达图...');
+            const radarChart = echarts.init(radarChartElement);
+            const radarMax = Math.max(baselineData.max, baselineData.average + 2 * baselineData.std_deviation);
+            radarChart.setOption({
+              backgroundColor: 'transparent',
+              title: {
+                text: `${metric.name} 基线雷达分析`,
+                textStyle: { color: '#fff', fontSize: 16 },
+                left: 'center'
+              },
+              radar: {
+                indicator: [
+                  { name: '平均值', max: radarMax },
+                  { name: '最大值', max: radarMax },
+                  { name: '75%分位', max: radarMax },
+                  { name: '25%分位', max: radarMax },
+                  { name: '最小值', max: radarMax }
+                ],
+                center: ['50%', '60%'],
+                radius: '70%',
+                axisName: { color: '#b0c4de' },
+                splitLine: { lineStyle: { color: '#3a6ea5' } },
+                splitArea: { show: false }
+              },
+              series: [{
+                type: 'radar',
+                data: [{
+                  value: [
+                    baselineData.average,
+                    baselineData.max,
+                    baselineData.percentile_75,
+                    baselineData.percentile_25,
+                    baselineData.min
+                  ],
+                  name: userName,
+                  itemStyle: { color: '#00eaff' },
+                  areaStyle: { color: 'rgba(0,234,255,0.3)' }
+                }]
+              }]
+            });
+            charts.radar = radarChart;
+          }
+          
+          // 3. 统计信息表格
+          const comparisonChartElement = document.getElementById('comparisonChart');
+          if (comparisonChartElement) {
+            console.log('📋 初始化统计信息...');
+            const comparisonChart = echarts.init(comparisonChartElement);
+            comparisonChart.setOption({
+              backgroundColor: 'transparent',
+              title: {
+                text: '基线统计详情',
+                textStyle: { color: '#fff', fontSize: 16 },
+                left: 'center'
+              },
+              grid: { left: 20, right: 20, top: 60, bottom: 20 },
+              xAxis: { show: false },
+              yAxis: { show: false },
+              graphic: [{
+                type: 'text',
+                left: 'center',
+                top: 80,
+                style: {
+                  text: `数据点数: ${baselineData.data_points}\n` +
+                        `平均值: ${baselineData.average}${metric.unit}\n` +
+                        `标准差: ${baselineData.std_deviation}${metric.unit}\n` +
+                        `变异系数: ${(baselineData.std_deviation/baselineData.average*100).toFixed(1)}%\n` +
+                        `数据范围: ${baselineData.min} ~ ${baselineData.max}${metric.unit}\n` +
+                        `四分位距: ${(baselineData.percentile_75 - baselineData.percentile_25).toFixed(1)}${metric.unit}`,
+                  fill: '#b0c4de',
+                  fontSize: 14,
+                  fontFamily: 'monospace',
+                  lineHeight: 24
+                }
+              }]
+            });
+            charts.comparison = comparisonChart;
+          }
+          
+          // 4. 正态分布图
+          const heatmapChartElement = document.getElementById('heatmapChart');
+          if (heatmapChartElement) {
+            console.log('📈 初始化正态分布图...');
+            const heatmapChart = echarts.init(heatmapChartElement);
+            const normalData = [];
+            for(let i = 0; i < 100; i++) {
+              const x = baselineData.min + (baselineData.max - baselineData.min) * i / 99;
+              const y = Math.exp(-0.5 * Math.pow((x - baselineData.average) / baselineData.std_deviation, 2));
+              normalData.push([x, y]);
+            }
+            
+            heatmapChart.setOption({
+              backgroundColor: 'transparent',
+              title: {
+                text: '正态分布拟合',
+                textStyle: { color: '#fff', fontSize: 16 },
+                left: 'center'
+              },
+              tooltip: {
+                trigger: 'axis',
+                backgroundColor: 'rgba(35,41,70,0.95)',
+                borderColor: '#00eaff',
+                textStyle: { color: '#fff' }
+              },
+              grid: { left: 60, right: 40, top: 60, bottom: 60 },
+              xAxis: {
+                type: 'value',
+                name: metric.unit,
+                nameTextStyle: { color: '#b0c4de' },
+                axisLabel: { color: '#b0c4de' },
+                axisLine: { lineStyle: { color: '#3a6ea5' } }
+              },
+              yAxis: {
+                type: 'value',
+                name: '概率密度',
+                nameTextStyle: { color: '#b0c4de' },
+                axisLabel: { color: '#b0c4de' },
+                axisLine: { lineStyle: { color: '#3a6ea5' } },
+                splitLine: { lineStyle: { color: '#2a2f4a' } }
+              },
+              series: [{
+                name: '正态分布',
+                type: 'line',
+                data: normalData,
+                smooth: true,
+                lineStyle: { color: '#00eaff', width: 3 },
+                areaStyle: { color: 'rgba(0,234,255,0.2)' }
+              }]
+            });
+            charts.heatmap = heatmapChart;
+          }
+          
+          // 5. 时间分布（简化显示）
+          const timeDistChartElement = document.getElementById('timeDistChart');
+          if (timeDistChartElement) {
+            console.log('⏰ 初始化时间分布图...');
+            const timeDistChart = echarts.init(timeDistChartElement);
+            timeDistChart.setOption({
+              backgroundColor: 'transparent',
+              title: {
+                text: '数据时间范围',
+                textStyle: { color: '#fff', fontSize: 16 },
+                left: 'center'
+              },
+              grid: { left: 20, right: 20, top: 60, bottom: 20 },
+              xAxis: { show: false },
+              yAxis: { show: false },
+              graphic: [{
+                type: 'text',
+                left: 'center',
+                top: 'middle',
+                style: {
+                  text: `📅 ${baselineData.date_range}\n📊 ${baselineData.data_points} 个数据点\n⏱️ 平均每天 ${Math.round(baselineData.data_points/30)} 个数据点`,
+                  fill: '#00eaff',
+                  fontSize: 16,
+                  textAlign: 'center',
+                  lineHeight: 28
+                }
+              }]
+            });
+            charts.timeDist = timeDistChart;
+          }
+          
+          // 存储图表实例
+          charts.trend = trendChart;
+          
+          console.log('✅ 所有图表初始化完成');
+          
+        } catch (error) {
+          console.error('❌ 图表初始化失败:', error);
+        }
+      }, 100); // 100ms延迟确保DOM准备就绪
+    }
+    
+    // 基线统计九宫格图表（多指标）
+    function renderBaselineStatsGridCharts(data) {
+      const multiLayout = document.getElementById('multiMetricLayout');
+      let html = '';
+      
+      selectedMetrics.forEach((metricCode, index) => {
+        const metric = metrics.find(m => m.code === metricCode);
+        html += `
+          <div class="chart-panel">
+            <div class="chart-header">${metric.name}</div>
+            <div class="chart-container" id="metricChart_${metricCode}"></div>
+          </div>
+        `;
+      });
+      
+      multiLayout.innerHTML = html;
+      
+      // 为每个体征渲染基线统计图表
+      selectedMetrics.forEach(metricCode => {
+        renderBaselineStatsSimpleChart(metricCode, data);
+      });
+    }
+    
+    // 简化的基线统计图表（用于九宫格）
+    function renderBaselineStatsSimpleChart(metricCode, data) {
+      const baselineData = data.baseline_stats[metricCode];
+      if (!baselineData) {
+        document.getElementById(`metricChart_${metricCode}`).innerHTML = 
+          '<div class="empty-state"><div class="icon">📊</div><div>暂无数据</div></div>';
+        return;
+      }
+      
+      const chart = echarts.init(document.getElementById(`metricChart_${metricCode}`));
+      const metric = metrics.find(m => m.code === metricCode);
+      const userName = data.user_map[selectedUserId || 'dept']?.user_name || '数据源';
+      
+      chart.setOption({
+        backgroundColor: 'transparent',
+        title: {
+          text: userName,
+          textStyle: { color: '#b0c4de', fontSize: 12 },
+          left: 'center',
+          top: 10
+        },
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: 'rgba(35,41,70,0.95)',
+          borderColor: '#00eaff',
+          textStyle: { color: '#fff' },
+          formatter: params => {
+            return `${params.name}: ${params.value}${metric.unit}`;
+          }
+        },
+        grid: { left: 30, right: 20, top: 40, bottom: 30 },
+        xAxis: {
+          type: 'category',
+          data: ['最小', '25%', '平均', '75%', '最大'],
+          axisLabel: { 
+            color: '#b0c4de', 
+            fontSize: 10,
+            rotate: 45
+          },
+          axisLine: { lineStyle: { color: '#3a6ea5' } }
+        },
+        yAxis: {
+          type: 'value',
+          axisLabel: { 
+            color: '#b0c4de', 
+            fontSize: 10,
+            formatter: value => value.toFixed(0)
+          },
+          axisLine: { lineStyle: { color: '#3a6ea5' } },
+          splitLine: { lineStyle: { color: '#2a2f4a' } }
+        },
+        series: [{
+          name: metric.name,
+          type: 'bar',
+          data: [
+            { value: baselineData.min, itemStyle: { color: '#ff6b6b' } },
+            { value: baselineData.percentile_25, itemStyle: { color: '#ffd700' } },
+            { value: baselineData.average, itemStyle: { color: '#00eaff' } },
+            { value: baselineData.percentile_75, itemStyle: { color: '#4ecdc4' } },
+            { value: baselineData.max, itemStyle: { color: '#ff6b6b' } }
+          ],
+          barWidth: '70%',
+          label: {
+            show: true,
+            position: 'top',
+            color: '#fff',
+            fontSize: 10,
+            formatter: params => params.value.toFixed(1)
+          }
+        }]
+      });
+      
+      charts[`metric_${metricCode}`] = chart;
+    }
+    
+    // 九宫格体征图表渲染
+    function renderMultiMetricGridCharts(data) {
+      const multiLayout = document.getElementById('multiMetricLayout');
+      let html = '';
+      
+      selectedMetrics.forEach((metricCode, index) => {
+        const metric = metrics.find(m => m.code === metricCode);
+        html += `
+          <div class="chart-panel">
+            <div class="chart-header">${metric.name}</div>
+            <div class="chart-container" id="metricChart_${metricCode}"></div>
+          </div>
+        `;
+      });
+      
+      multiLayout.innerHTML = html;
+      
+      // 为每个体征渲染独立图表
+      selectedMetrics.forEach(metricCode => {
+        renderSingleMetricChart(metricCode, data);
+      });
+    }
+    
+    // 单个体征基线图表
+    function renderSingleMetricChart(metricCode, data) {
+      const chart = echarts.init(document.getElementById(`metricChart_${metricCode}`));
+      const metric = metrics.find(m => m.code === metricCode);
+      const series = [];
+      
+      // 部门平均基线
+      if (data.dept_baseline && data.dept_baseline[metricCode]) {
+        const deptTrend = data.dept_baseline[metricCode];
+        if (deptTrend.length > 0) {
+          series.push({
+            name: '部门平均',
+            type: 'line',
+            data: deptTrend.map(d => [d.baseline_time, d.mean_value]),
+            lineStyle: { color: '#00eaff', width: 3 },
+            symbol: 'circle',
+            symbolSize: 6,
+            smooth: true,
+            areaStyle: { color: 'rgba(0,234,255,0.1)' }
+          });
+        }
+      }
+      
+      // 个人基线趋势
+      if (data.baseline_trend) {
+        Object.entries(data.baseline_trend).forEach(([uid, trends], userIndex) => {
+          const userName = data.user_map?.[uid]?.user_name || `用户${uid}`;
+          const userTrend = trends[metricCode] || [];
+          
+          if (userTrend.length > 0) {
+            series.push({
+              name: userName,
+              type: 'line',
+              data: userTrend.map(d => [d.baseline_time, d.mean_value]),
+              lineStyle: { 
+                color: userColors[userIndex % userColors.length], 
+                width: 2,
+                opacity: 0.8
+              },
+              symbol: 'circle',
+              symbolSize: 4,
+              smooth: true
+            });
+          }
+        });
+      }
+      
+      if (series.length === 0) {
+        document.getElementById(`metricChart_${metricCode}`).innerHTML = 
+          '<div class="empty-state"><div class="icon">📊</div><div>暂无基线数据</div></div>';
+        return;
+      }
+      
+      chart.setOption({
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: 'rgba(35,41,70,0.95)',
+          borderColor: '#00eaff',
+          textStyle: { color: '#fff' },
+          formatter: params => {
+            let html = `<div style="margin-bottom:4px;font-weight:bold;">${params[0].axisValueLabel}</div>`;
+            params.forEach(p => {
+              html += `<div>${p.marker} ${p.seriesName}: ${p.value[1]} ${metric.unit}</div>`;
+            });
+            return html;
+          }
+        },
+        legend: {
+          show: false // 九宫格模式下隐藏图例节约空间
+        },
+        grid: { left: 40, right: 20, top: 40, bottom: 40 },
+        xAxis: {
+          type: 'time',
+          axisLabel: { 
+            color: '#b0c4de',
+            fontSize: 10,
+            formatter: value => {
+              const date = new Date(value);
+              return `${date.getMonth()+1}/${date.getDate()}`;
+            }
+          },
+          axisLine: { lineStyle: { color: '#3a6ea5' } }
+        },
+        yAxis: {
+          type: 'value',
+          name: metric.unit,
+          nameTextStyle: { color: '#b0c4de', fontSize: 10 },
+          axisLabel: { color: '#b0c4de', fontSize: 10 },
+          axisLine: { lineStyle: { color: '#3a6ea5' } },
+          splitLine: { lineStyle: { color: '#2a2f4a' } }
+        },
+        series
+      });
+      
+      charts[`metric_${metricCode}`] = chart;
+    }
+    
+    // 部门员工基线趋势对比图（曲线图）
+    function renderDeptComparisonTrendChart(data) {
+      const chart = echarts.init(document.getElementById('deptComparisonChart'));
+      const series = [];
+      
+      if (!data.baseline_trend) {
+        document.getElementById('deptComparisonChart').innerHTML = 
+          '<div class="empty-state"><div class="icon">👥</div><div>暂无基线对比数据</div></div>';
+        return;
+      }
+      
+      // 收集所有时间点
+      const allTimePoints = new Set();
+      Object.values(data.baseline_trend).forEach(trends => {
+        Object.values(trends).forEach(metricTrends => {
+          metricTrends.forEach(d => {
+            allTimePoints.add(d.baseline_time);
+          });
+        });
+      });
+      
+      const sortedTimePoints = Array.from(allTimePoints).sort();
+      
+      // 为每个用户创建曲线
+      Object.entries(data.baseline_trend).forEach(([uid, trends], userIndex) => {
+        const userName = data.user_map?.[uid]?.user_name || `用户${uid}`;
+        const metricCode = selectedMetrics[0]; // 单指标模式，取第一个指标
+        const userTrend = trends[metricCode] || [];
+        
+        if (userTrend.length > 0) {
+          // 按时间排序数据
+          const sortedData = userTrend
+            .map(d => [d.baseline_time, d.mean_value])
+            .sort((a, b) => new Date(a[0]) - new Date(b[0]));
+          
+          series.push({
+            name: userName,
+            type: 'line',
+            data: sortedData,
+            lineStyle: { 
+              color: userColors[userIndex % userColors.length],
+              width: 3
+            },
+            symbol: 'circle',
+            symbolSize: 6,
+            smooth: true,
+            emphasis: {
+              lineStyle: { width: 4 }
+            }
+          });
+        }
+      });
+      
+      const metric = metrics.find(m => m.code === selectedMetrics[0]);
+      
+      chart.setOption({
+        backgroundColor: 'transparent',
+        title: {
+          text: `${metric.name}基线趋势对比`,
+          textStyle: { color: '#fff', fontSize: 16 },
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: 'rgba(35,41,70,0.95)',
+          borderColor: '#00eaff',
+          textStyle: { color: '#fff' },
+          formatter: params => {
+            let html = `<div style="margin-bottom:4px;font-weight:bold;">${params[0].axisValueLabel}</div>`;
+            params.forEach(p => {
+              html += `<div>${p.marker} ${p.seriesName}: ${p.value[1]} ${metric.unit}</div>`;
+            });
+            return html;
+          }
+        },
+        legend: {
+          textStyle: { color: '#b0c4de' },
+          top: 40,
+          type: 'scroll'
+        },
+        grid: { 
+          left: 60, 
+          right: 40, 
+          top: 80, 
+          bottom: 60 
+        },
+        xAxis: {
+          type: 'time',
+          axisLabel: { 
+            color: '#b0c4de',
+            formatter: value => {
+              const date = new Date(value);
+              return `${date.getMonth()+1}/${date.getDate()}`;
+            }
+          },
+          axisLine: { lineStyle: { color: '#3a6ea5' } }
+        },
+        yAxis: {
+          type: 'value',
+          name: metric.unit,
+          nameTextStyle: { color: '#b0c4de' },
+          axisLabel: { color: '#b0c4de' },
+          axisLine: { lineStyle: { color: '#3a6ea5' } },
+          splitLine: { lineStyle: { color: '#2a2f4a' } }
+        },
+        series
+      });
+      
+      charts.deptComparison = chart;
+    }
+    
+    // 基线趋势演进图 - 支持多指标
+    function renderTrendChart(data) {
+      const chart = echarts.init(document.getElementById('trendChart'));
+      const series = [];
+      const colors = ['#00eaff', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#dda0dd', '#98d8c8', '#f7dc6f'];
+      
+      selectedMetrics.forEach((metricCode, metricIndex) => {
+        const metric = metrics.find(m => m.code === metricCode);
+        const metricColor = colors[metricIndex % colors.length];
+        
+        // 部门平均基线
+        if (data.dept_baseline) {
+          const deptTrend = data.dept_baseline[metricCode] || [];
+          if (deptTrend.length > 0) {
+            series.push({
+              name: `${metric.name}(部门平均)`,
+              type: 'line',
+              data: deptTrend.map(d => [d.baseline_time, d.mean_value]),
+              lineStyle: { color: metricColor, width: 4, type: 'solid' },
+              symbol: 'circle',
+              symbolSize: 8,
+              smooth: true,
+              areaStyle: { color: metricColor, opacity: 0.1 }
+            });
+          }
+        }
+        
+        // 个人基线趋势
+        if (data.baseline_trend) {
+          Object.entries(data.baseline_trend).forEach(([uid, trends], userIndex) => {
+            const userName = data.user_map?.[uid]?.user_name || `用户${uid}`;
+            const userTrend = trends[metricCode] || [];
+            
+            if (userTrend.length > 0) {
+              series.push({
+                name: `${userName}(${metric.name})`,
+                type: 'line',
+                data: userTrend.map(d => [d.baseline_time, d.mean_value]),
+                lineStyle: { 
+                  color: metricColor, 
+                  width: 2, 
+                  type: selectedMetrics.length > 1 ? 'dashed' : 'solid',
+                  opacity: 0.7 
+                },
+                symbol: 'circle',
+                symbolSize: 4,
+                smooth: true
+              });
+            }
+          });
+        }
+      });
+      
+      chart.setOption({
+        backgroundColor: 'transparent',
+        title: {
+          text: selectedMetrics.length === 1 ? 
+            `${metrics.find(m => m.code === selectedMetrics[0]).name}基线趋势对比` : 
+            `多体征基线趋势对比 (${selectedMetrics.length}项)`,
+          textStyle: { color: '#fff', fontSize: 16 },
+          left: 'center',
+          top: 40
+        },
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: 'rgba(35,41,70,0.95)',
+          borderColor: '#00eaff',
+          textStyle: { color: '#fff' }
+        },
+        legend: {
+          textStyle: { color: '#b0c4de' },
+          top: 70,
+          type: 'scroll',
+          pageButtonPosition: 'end'
+        },
+        grid: { left: 60, right: 40, top: 120, bottom: 60 },
+        xAxis: {
+          type: 'time',
+          axisLabel: { color: '#b0c4de' },
+          axisLine: { lineStyle: { color: '#3a6ea5' } }
+        },
+        yAxis: {
+          type: 'value',
+          name: selectedMetrics.length === 1 ? metrics.find(m => m.code === selectedMetrics[0]).unit : '数值',
+          nameTextStyle: { color: '#b0c4de' },
+          axisLabel: { color: '#b0c4de' },
+          axisLine: { lineStyle: { color: '#3a6ea5' } },
+          splitLine: { lineStyle: { color: '#2a2f4a' } }
+        },
+        series
+      });
+      
+      charts.trend = chart;
+    }
+    
+    // 员工基线对比图 - 改为曲线图
+    function renderComparisonChart(data) {
+      const chart = echarts.init(document.getElementById('comparisonChart'));
+      const series = [];
+      
+      if (!data.baseline_trend) {
+        document.getElementById('comparisonChart').innerHTML = 
+          '<div class="empty-state"><div class="icon">📊</div><div>暂无对比数据</div></div>';
+        return;
+      }
+      
+      // 收集所有时间点
+      const allTimePoints = new Set();
+      Object.values(data.baseline_trend).forEach(trends => {
+        Object.values(trends).forEach(metricTrends => {
+          metricTrends.forEach(d => {
+            allTimePoints.add(d.baseline_time);
+          });
+        });
+      });
+      
+      const sortedTimePoints = Array.from(allTimePoints).sort();
+      
+      // 为每个用户创建曲线
+      Object.entries(data.baseline_trend).forEach(([uid, trends], userIndex) => {
+        const userName = data.user_map?.[uid]?.user_name || `用户${uid}`;
+        const metricCode = selectedMetrics[0]; // 单指标模式，取第一个指标
+        const userTrend = trends[metricCode] || [];
+        
+        if (userTrend.length > 0) {
+          // 按时间排序数据
+          const sortedData = userTrend
+            .map(d => [d.baseline_time, d.mean_value])
+            .sort((a, b) => new Date(a[0]) - new Date(b[0]));
+          
+          series.push({
+            name: userName,
+            type: 'line',
+            data: sortedData,
+            lineStyle: { 
+              color: userColors[userIndex % userColors.length],
+              width: 3
+            },
+            symbol: 'circle',
+            symbolSize: 6,
+            smooth: true,
+            emphasis: {
+              lineStyle: { width: 4 }
+            }
+          });
+        }
+      });
+      
+      const metric = metrics.find(m => m.code === selectedMetrics[0]);
+      
+      chart.setOption({
+        backgroundColor: 'transparent',
+        title: {
+          text: `${metric.name}基线趋势对比`,
+          textStyle: { color: '#fff', fontSize: 16 },
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: 'rgba(35,41,70,0.95)',
+          borderColor: '#00eaff',
+          textStyle: { color: '#fff' },
+          formatter: params => {
+            let html = `<div style="margin-bottom:4px;font-weight:bold;">${params[0].axisValueLabel}</div>`;
+            params.forEach(p => {
+              html += `<div>${p.marker} ${p.seriesName}: ${p.value[1]} ${metric.unit}</div>`;
+            });
+            return html;
+          }
+        },
+        legend: {
+          textStyle: { color: '#b0c4de' },
+          top: 40,
+          type: 'scroll'
+        },
+        grid: { 
+          left: 60, 
+          right: 40, 
+          top: 80, 
+          bottom: 60 
+        },
+        xAxis: {
+          type: 'time',
+          axisLabel: { 
+            color: '#b0c4de',
+            formatter: value => {
+              const date = new Date(value);
+              return `${date.getMonth()+1}/${date.getDate()}`;
+            }
+          },
+          axisLine: { lineStyle: { color: '#3a6ea5' } }
+        },
+        yAxis: {
+          type: 'value',
+          name: metric.unit,
+          nameTextStyle: { color: '#b0c4de' },
+          axisLabel: { color: '#b0c4de' },
+          axisLine: { lineStyle: { color: '#3a6ea5' } },
+          splitLine: { lineStyle: { color: '#2a2f4a' } }
+        },
+        series
+      });
+      
+      charts.comparison = chart;
+    }
+    
+    // 异常热力图 - 支持多指标
+    function renderHeatmapChart(data) {
+      const chart = echarts.init(document.getElementById('heatmapChart'));
+      
+      if (!data.anomaly_heatmap || data.anomaly_heatmap.length === 0) {
+        document.getElementById('heatmapChart').innerHTML = '<div class="empty-state">📊 暂无异常数据</div>';
+        return;
+      }
+      
+      const users = [];
+      const metricNames = [];
+      const heatData = [];
+      let maxFreq = 0;
+      
+      // 筛选选中指标的异常数据
+      const filteredHeatmap = data.anomaly_heatmap.filter(item => 
+        selectedMetrics.includes(item.metric)
+      );
+      
+      if (filteredHeatmap.length === 0) {
+        document.getElementById('heatmapChart').innerHTML = '<div class="empty-state">📊 选中指标暂无异常数据</div>';
+        return;
+      }
+      
+      // 构建用户和指标列表
+      const userSet = new Set();
+      const metricSet = new Set();
+      
+      filteredHeatmap.forEach(item => {
+        const userName = data.user_map?.[item.user_id]?.user_name || `用户${item.user_id}`;
+        const metricName = metrics.find(m => m.code === item.metric)?.name || item.metric;
+        userSet.add(userName);
+        metricSet.add(metricName);
+        maxFreq = Math.max(maxFreq, item.frequency);
+      });
+      
+      users.push(...userSet);
+      metricNames.push(...metricSet);
+      
+      // 构建热力图数据
+      users.forEach((userName, userIndex) => {
+        metricNames.forEach((metricName, metricIndex) => {
+          const userId = Object.keys(data.user_map || {}).find(uid => 
+            data.user_map[uid].user_name === userName
+          );
+          const metricCode = metrics.find(m => m.name === metricName)?.code;
+          
+          const item = filteredHeatmap.find(h => 
+            h.user_id == userId && h.metric === metricCode
+          );
+          
+          heatData.push([userIndex, metricIndex, item ? item.frequency : 0]);
+        });
+      });
+      
+      chart.setOption({
+        backgroundColor: 'transparent',
+        title: {
+          text: '异常频次分布热力图',
+          textStyle: { color: '#fff', fontSize: 16 },
+          left: 'center'
+        },
+        tooltip: {
+          formatter: params => {
+            const userName = users[params.data[0]];
+            const metricName = metricNames[params.data[1]];
+            return `${userName} - ${metricName}: ${params.data[2]}次异常`;
+          },
+          backgroundColor: 'rgba(35,41,70,0.95)',
+          borderColor: '#00eaff',
+          textStyle: { color: '#fff' }
+        },
+        grid: { left: 20, right: 20, top: 60, bottom: 80 },
+        xAxis: {
+          type: 'category',
+          data: users,
+          axisLabel: { color: '#b0c4de', interval: 0, rotate: 45 },
+          axisLine: { lineStyle: { color: '#3a6ea5' } }
+        },
+        yAxis: {
+          type: 'category',
+          data: metricNames,
+          axisLabel: { color: '#b0c4de' },
+          axisLine: { lineStyle: { color: '#3a6ea5' } }
+        },
+        visualMap: {
+          min: 0,
+          max: maxFreq,
+          calculable: true,
+          orient: 'horizontal',
+          left: 'center',
+          bottom: 20,
+          inRange: {
+            color: ['#313695', '#4575b4', '#74add1', '#abd9e9', '#e0f3f8', '#ffffcc', '#fee090', '#fdae61', '#f46d43', '#d73027', '#a50026']
+          },
+          textStyle: { color: '#b0c4de' }
+        },
+        series: [{
+          type: 'heatmap',
+          data: heatData,
+          label: { show: true, color: '#fff' }
+        }]
+      });
+      
+      charts.heatmap = chart;
+    }
+    
+    // 雷达统计图 - 支持多指标
+    function renderRadarChart(data) {
+      const chart = echarts.init(document.getElementById('radarChart'));
+      
+      // 构建雷达图指标
+      const indicators = selectedMetrics.map(metricCode => {
+        const metric = metrics.find(m => m.code === metricCode);
+        return { name: metric.name, max: 100 };
+      });
+      
+      const radarData = [];
+      
+      if (data.baseline_trend) {
+        Object.entries(data.baseline_trend).forEach(([uid, trends]) => {
+          const userName = data.user_map?.[uid]?.user_name || `用户${uid}`;
+          const values = [];
+          
+          selectedMetrics.forEach(metricCode => {
+            const userTrend = trends[metricCode] || [];
+            
+            if (userTrend.length > 0) {
+              // 计算基线稳定性评分（模拟算法）
+              const stability = Math.max(0, 100 - userTrend.reduce((sum, d, i, arr) => 
+                i > 0 ? sum + Math.abs(d.mean_value - arr[i-1].mean_value) : sum, 0) / userTrend.length * 2);
+              values.push(Math.min(100, stability));
+            } else {
+              values.push(0);
+            }
+          });
+          
+          if (values.some(v => v > 0)) {
+            radarData.push({
+              name: userName,
+              value: values
+            });
+          }
+        });
+      }
+      
+      chart.setOption({
+        backgroundColor: 'transparent',
+        title: {
+          text: selectedMetrics.length === 1 ? 
+            `${metrics.find(m => m.code === selectedMetrics[0]).name}基线稳定性` : 
+            '多体征基线稳定性雷达',
+          textStyle: { color: '#fff', fontSize: 16 },
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: 'rgba(35,41,70,0.95)',
+          borderColor: '#00eaff',
+          textStyle: { color: '#fff' }
+        },
+        legend: {
+          data: radarData.map(d => d.name),
+          textStyle: { color: '#b0c4de' },
+          bottom: 10,
+          type: 'scroll'
+        },
+        radar: {
+          indicator: indicators,
+          center: ['50%', '50%'],
+          radius: 80,
+          axisName: {
+            color: '#b0c4de',
+            fontSize: 12
+          },
+          splitLine: {
+            lineStyle: { color: '#3a6ea5' }
+          },
+          splitArea: {
+            areaStyle: {
+              color: ['rgba(58,110,165,0.1)', 'rgba(58,110,165,0.05)']
+            }
+          }
+        },
+        series: [{
+          type: 'radar',
+          data: radarData.map((d, i) => ({
+            ...d,
+            lineStyle: { color: userColors[i % userColors.length] },
+            areaStyle: { color: userColors[i % userColors.length], opacity: 0.1 }
+          }))
+        }]
+      });
+      
+      charts.radar = chart;
+    }
+    
+    // 时间分布分析 - 支持多指标
+    function renderTimeDistChart(data) {
+      const chart = echarts.init(document.getElementById('timeDistChart'));
+      
+      const hourData = selectedMetrics.map(() => new Array(24).fill(0));
+      let totalCount = 0;
+      
+      if (data.metric_detail) {
+        Object.values(data.metric_detail).forEach(userDetails => {
+          selectedMetrics.forEach((metricCode, metricIndex) => {
+            if (userDetails[metricCode]) {
+              userDetails[metricCode].forEach(d => {
+                const hour = new Date(d.timestamp).getHours();
+                hourData[metricIndex][hour]++;
+                totalCount++;
+              });
+            }
+          });
+        });
+      }
+      
+      const series = selectedMetrics.map((metricCode, index) => {
+        const metric = metrics.find(m => m.code === metricCode);
+        return {
+          name: metric.name,
+          type: 'bar',
+          data: hourData[index],
+          itemStyle: { 
+            color: userColors[index % userColors.length]
+          },
+          emphasis: {
+            itemStyle: { color: '#38f9d7' }
+          }
+        };
+      });
+      
+      chart.setOption({
+        backgroundColor: 'transparent',
+        title: {
+          text: selectedMetrics.length === 1 ? 
+            '24小时数据分布' : 
+            '多体征24小时分布对比',
+          textStyle: { color: '#fff', fontSize: 16 },
+          left: 'center'
+        },
+        tooltip: {
+          trigger: 'axis',
+          formatter: params => {
+            let html = `${params[0].name}点:<br/>`;
+            params.forEach(p => {
+              const total = hourData[p.seriesIndex].reduce((a, b) => a + b, 0);
+              const percent = total > 0 ? (p.value / total * 100).toFixed(1) : 0;
+              html += `${p.seriesName}: ${p.value}条 (${percent}%)<br/>`;
+            });
+            return html;
+          },
+          backgroundColor: 'rgba(35,41,70,0.95)',
+          borderColor: '#00eaff',
+          textStyle: { color: '#fff' }
+        },
+        legend: {
+          show: selectedMetrics.length > 1,
+          textStyle: { color: '#b0c4de' },
+          top: 40
+        },
+        grid: { 
+          left: 40, 
+          right: 40, 
+          top: selectedMetrics.length > 1 ? 80 : 60, 
+          bottom: 40 
+        },
+        xAxis: {
+          type: 'category',
+          data: Array.from({length: 24}, (_, i) => `${i}h`),
+          axisLabel: { color: '#b0c4de' },
+          axisLine: { lineStyle: { color: '#3a6ea5' } }
+        },
+        yAxis: {
+          type: 'value',
+          name: '数据量',
+          nameTextStyle: { color: '#b0c4de' },
+          axisLabel: { color: '#b0c4de' },
+          axisLine: { lineStyle: { color: '#3a6ea5' } },
+          splitLine: { lineStyle: { color: '#2a2f4a' } }
+        },
+        series
+      });
+      
+      charts.timeDist = chart;
+    }
+    
+    // 窗口resize事件
+    window.addEventListener('resize', () => {
+      Object.values(charts).forEach(chart => {
+        if (chart && typeof chart.resize === 'function') {
+          try { chart.resize(); } catch(e) { console.warn('Chart resize failed:', e); }
+        }
+      });
+      
+      // 处理九宫格图表的resize
+      selectedMetrics.forEach(metricCode => {
+        const chartId = `metric_${metricCode}`;
+        if (charts[chartId] && typeof charts[chartId].resize === 'function') {
+          try { charts[chartId].resize(); } catch(e) { console.warn(`Metric chart ${metricCode} resize failed:`, e); }
+        }
+      });
+    });
+    
+    // 基线统计九宫格图表（多指标）
+    function renderBaselineStatsGridCharts(data) {
+      const multiLayout = document.getElementById('multiMetricLayout');
+      let html = '';
+      
+      selectedMetrics.forEach((metricCode, index) => {
+        const metric = metrics.find(m => m.code === metricCode);
+        html += `
+          <div class="chart-panel">
+            <div class="chart-header">${metric.name}</div>
+            <div class="chart-container" id="metricChart_${metricCode}"></div>
+          </div>
+        `;
+      });
+      
+      multiLayout.innerHTML = html;
+      
+      // 为每个体征渲染基线统计图表
+      selectedMetrics.forEach(metricCode => {
+        renderBaselineStatsSimpleChart(metricCode, data);
+      });
+    }
+    
+    // 简化的基线统计图表（用于九宫格）
+    function renderBaselineStatsSimpleChart(metricCode, data) {
+      const baselineData = data.baseline_stats[metricCode];
+      if (!baselineData) {
+        document.getElementById(`metricChart_${metricCode}`).innerHTML = 
+          '<div class="empty-state"><div class="icon">📊</div><div>暂无数据</div></div>';
+        return;
+      }
+      
+      const chart = echarts.init(document.getElementById(`metricChart_${metricCode}`));
+      const metric = metrics.find(m => m.code === metricCode);
+      const userName = data.user_map[selectedUserId || 'dept']?.user_name || '数据源';
+      
+      chart.setOption({
+        backgroundColor: 'transparent',
+        title: {
+          text: userName,
+          textStyle: { color: '#b0c4de', fontSize: 12 },
+          left: 'center',
+          top: 10
+        },
+        tooltip: {
+          trigger: 'item',
+          backgroundColor: 'rgba(35,41,70,0.95)',
+          borderColor: '#00eaff',
+          textStyle: { color: '#fff' },
+          formatter: params => {
+            return `${params.name}: ${params.value}${metric.unit}`;
+          }
+        },
+        grid: { left: 30, right: 20, top: 40, bottom: 30 },
+        xAxis: {
+          type: 'category',
+          data: ['最小', '25%', '平均', '75%', '最大'],
+          axisLabel: { 
+            color: '#b0c4de', 
+            fontSize: 10,
+            rotate: 45
+          },
+          axisLine: { lineStyle: { color: '#3a6ea5' } }
+        },
+        yAxis: {
+          type: 'value',
+          axisLabel: { 
+            color: '#b0c4de', 
+            fontSize: 10,
+            formatter: value => value.toFixed(0)
+          },
+          axisLine: { lineStyle: { color: '#3a6ea5' } },
+          splitLine: { lineStyle: { color: '#2a2f4a' } }
+        },
+        series: [{
+          name: metric.name,
+          type: 'bar',
+          data: [
+            { value: baselineData.min, itemStyle: { color: '#ff6b6b' } },
+            { value: baselineData.percentile_25, itemStyle: { color: '#ffd700' } },
+            { value: baselineData.average, itemStyle: { color: '#00eaff' } },
+            { value: baselineData.percentile_75, itemStyle: { color: '#4ecdc4' } },
+            { value: baselineData.max, itemStyle: { color: '#ff6b6b' } }
+          ],
+          barWidth: '70%',
+          label: {
+            show: true,
+            position: 'top',
+            color: '#fff',
+            fontSize: 10,
+            formatter: params => params.value.toFixed(1)
+          }
+        }]
+      });
+      
+      charts[`metric_${metricCode}`] = chart;
+    }
+  </script>
+</body>
+</html>

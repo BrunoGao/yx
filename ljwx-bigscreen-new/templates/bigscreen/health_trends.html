@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>健康趋势图</title>
+  <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+  <style>
+    body { margin:0; background: #181c2f; color:#eee; font-family: 'Segoe UI',sans-serif; }
+    .legend-bar {padding:10px 20px;}
+    .chart-container { display: grid; grid-template-columns: repeat(3,1fr); gap:10px; padding:10px; }
+    .chart { width:100%; height:300px; background:#232946; border-radius:8px; box-shadow:0 2px 12px #0008; transition:height .3s;}
+    .selector-bar {padding:16px 20px;display:flex;align-items:center;gap:12px;}
+    .selector-bar label {font-size:18px;}
+    .metric-dropdown{position:relative;}
+    .metric-btn{min-width:180px;height:2.4em;border-radius:6px;border:1px solid #444;background:#232946;color:#fff;font-size:16px;padding:4px 8px;cursor:pointer;}
+    .metric-list{display:none;position:absolute;top:110%;left:0;z-index:10;background:#232946;border:1px solid #444;border-radius:6px;box-shadow:0 2px 8px #0006;padding:8px 0;}
+    .metric-list label{display:block;padding:6px 18px;cursor:pointer;font-size:16px;}
+    .metric-list label:hover{background:#2a2f4a;}
+    .metric-list input[type=checkbox]{margin-right:8px;}
+    .metric-list input[type=radio]{margin-right:8px;}
+    .metric-list .all{font-weight:bold;}
+    
+    /* 员工选择器特定样式 */
+    #userList {max-height:300px; overflow-y:auto; min-width:220px;}
+    #userList label {white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    #userList input[type=radio] {accent-color:#00eaff;}
+    #userTip {animation:pulse 2s infinite;}
+    @keyframes pulse {0%{opacity:1;} 50%{opacity:0.7;} 100%{opacity:1;}}
+    
+    /* 搜索框样式 */
+    .user-search {
+      width:200px; margin:8px; padding:4px 8px; border-radius:4px;
+      border:1px solid #444; background:#232946; color:#fff; font-size:14px;
+    }
+    .user-search:focus {border-color:#00eaff; outline:none;}
+
+    .date-picker-container {
+        padding: 16px 20px 0 20px;
+        display: flex; align-items: center; gap: 8px;
+        font-size: 16px; font-weight: 500;
+      }
+      .date-picker-container input[type="date"] {
+        border: 1.5px solid #3a6ea5; border-radius: 6px;
+        background: #232946; color: #fff; font-size: 16px; padding: 4px 8px;
+        margin-right: 4px; outline: none; transition: .2s;
+      }
+      .date-picker-container input[type="date"]:focus { border-color: #00eaff; }
+      #dateSearchBtn {
+        border: none; border-radius: 6px; background: #00eaff; color: #181c2f;
+        font-size: 16px; font-weight: 700; padding: 6px 18px; cursor: pointer;
+        box-shadow: 0 2px 8px #00eaff44; transition: .2s;
+      }
+      #dateSearchBtn:hover { background: #38f9d7; color: #232946; }
+
+  </style>
+</head>
+<body>
+  <div class="selector-bar">
+    <label>选择体征：</label>
+    <div class="metric-dropdown">
+      <button id="metricBtn" class="metric-btn">全部体征</button>
+      <div id="metricList" class="metric-list"></div>
+    </div>
+  </div>
+  <div class="date-picker-container">
+    <label>起始日期：</label>
+    <input type="date" id="startDate" />
+    <label style="margin-left:12px;">结束日期：</label>
+    <input type="date" id="endDate" />
+    <button id="dateSearchBtn" style="margin-left:16px;">查询</button>
+  </div>
+  <!-- 员工选择器 -->
+  <div id="userSelector" class="selector-bar" style="display:flex;">
+    <label>选择员工：</label>
+    <div class="metric-dropdown">
+      <button id="userBtn" class="metric-btn">请选择员工</button>
+      <div id="userList" class="metric-list"></div>
+    </div>
+    <div id="userTip" style="margin-left:12px;color:#ff6b6b;font-size:14px;">正在加载员工列表...</div>
+  </div>
+  <div class="legend-bar" id="legendBar"></div>
+  <div id="loading" style="display:none;position:fixed;left:0;top:0;width:100vw;height:100vh;z-index:99;background:#181c2fcc;display:flex;align-items:center;justify-content:center;font-size:32px;color:#00eaff;font-weight:bold;">加载中...</div>
+  <div id="nodata" style="display:none;text-align:center;font-size:28px;color:#b0c4de;margin-top:80px;">暂无数据</div>
+  <div class="chart-container"></div>
+
+  <script>
+    const params = new URLSearchParams(location.search);
+    const customerId = params.get('customerId') || '1';
+    const deptId = params.get('deptId') || customerId;
+    const userId = params.get('userId') || '';
+    const deptName = params.get('deptName') || '';
+    const userName = params.get('userName') || '';
+    const startDate = document.getElementById('startDate').value;
+    const endDate = document.getElementById('endDate').value;
+    
+    let departmentUsers = []; // 存储部门员工列表
+    let selectedUserId = userId; // 当前选择的员工ID
+
+    window.onload = ()=>{
+      // 设置默认日期
+      const today = new Date();
+      const y = today.getFullYear(), m = String(today.getMonth()+1).padStart(2,'0'), d = String(today.getDate()).padStart(2,'0');
+      document.getElementById('startDate').value = `${y}-${m}-01`;
+      document.getElementById('endDate').value = `${y}-${m}-${d}`;
+      
+      // 显示初始提示页面，不自动加载数据
+      showInitialState();
+      
+      // 首先获取部门员工列表（仅获取列表，不加载数据）
+      loadDepartmentUsers();
+      
+      document.getElementById('dateSearchBtn').onclick = loadTrendData;
+    };
+
+    // 显示初始状态页面
+    function showInitialState() {
+      const container = document.querySelector('.chart-container');
+      container.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: #232946; border-radius: 8px; margin: 20px;">
+          <div style="font-size: 48px; color: #00eaff; margin-bottom: 20px;">📊</div>
+          <h2 style="color: #fff; margin-bottom: 16px; font-size: 24px;">健康趋势分析</h2>
+          <p style="color: #b0c4de; font-size: 18px; margin-bottom: 30px; line-height: 1.6;">
+            选择员工和时间范围，查看详细的健康数据趋势对比分析
+          </p>
+          <div style="display: flex; justify-content: center; gap: 20px; margin-top: 30px;">
+            <div style="background: #1a1e35; padding: 20px; border-radius: 8px; border-left: 4px solid #00eaff;">
+              <div style="color: #00eaff; font-weight: bold; margin-bottom: 8px;">📈 多指标对比</div>
+              <div style="color: #b0c4de; font-size: 14px;">心率、血氧、血压等9项指标</div>
+            </div>
+            <div style="background: #1a1e35; padding: 20px; border-radius: 8px; border-left: 4px solid #ff6b6b;">
+              <div style="color: #ff6b6b; font-weight: bold; margin-bottom: 8px;">👥 个人vs部门</div>
+              <div style="color: #b0c4de; font-size: 14px;">个人数据与部门平均对比</div>
+            </div>
+            <div style="background: #1a1e35; padding: 20px; border-radius: 8px; border-left: 4px solid #38f9d7;">
+              <div style="color: #38f9d7; font-weight: bold; margin-bottom: 8px;">📅 时间范围</div>
+              <div style="color: #b0c4de; font-size: 14px;">支持自定义时间查询</div>
+            </div>
+          </div>
+          <div style="margin-top: 40px; padding: 20px; background: #1a1e35; border-radius: 8px; border: 1px dashed #444;">
+            <div style="color: #ffd700; font-weight: bold; font-size: 16px; margin-bottom: 10px;">💡 使用提示</div>
+            <div style="color: #b0c4de; font-size: 14px; text-align: left; max-width: 600px; margin: 0 auto;">
+              <div style="margin-bottom: 8px;">1. 🧑‍💼 <strong>选择员工</strong>：点击上方"请选择员工"进行选择</div>
+              <div style="margin-bottom: 8px;">2. 📅 <strong>设置时间</strong>：调整起始和结束日期范围</div>
+              <div style="margin-bottom: 8px;">3. 🔍 <strong>点击查询</strong>：点击"查询"按钮开始分析</div>
+              <div>4. 📊 <strong>选择指标</strong>：在图表显示后可选择需要对比的健康指标</div>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      // 隐藏加载和无数据提示
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('nodata').style.display = 'none';
+    }
+
+    // 获取部门员工列表
+    async function loadDepartmentUsers() {
+      const userTip = document.getElementById('userTip');
+      const userBtn = document.getElementById('userBtn');
+      
+      // 显示加载状态
+      if (userTip) {
+        userTip.innerText = '正在加载员工列表...';
+        userTip.style.color = '#00eaff';
+      }
+      if (userBtn) {
+        userBtn.innerText = '加载中...';
+        userBtn.disabled = true;
+      }
+      
+      try {
+        const response = await fetch(`/fetch_users?orgId=${deptId}`);
+        const data = await response.json();
+        
+        // 适应直接数组格式的响应
+        if (Array.isArray(data)) {
+          departmentUsers = data.filter(user => user.device_sn && user.device_sn !== '-' && user.device_sn !== '');
+          console.log(`📊 部门员工数量: ${departmentUsers.length}`);
+          
+          // 重新启用按钮
+          if (userBtn) {
+            userBtn.disabled = false;
+            userBtn.innerText = '请选择员工';
+          }
+          
+          // 设置员工选择器
+          setupUserSelector();
+          
+          // 更新初始页面的员工数量提示
+          updateInitialStateUserCount();
+          
+          console.log(`✅ 员工列表加载完成，等待用户选择后查询数据`);
+        } else if (data.success && data.data) {
+          // 兼容包装格式
+          departmentUsers = data.data.filter(user => user.device_sn && user.device_sn !== '-' && user.device_sn !== '');
+          console.log(`📊 部门员工数量: ${departmentUsers.length}`);
+          
+          // 重新启用按钮
+          if (userBtn) {
+            userBtn.disabled = false;
+            userBtn.innerText = '请选择员工';
+          }
+          
+          // 设置员工选择器
+          setupUserSelector();
+          
+          // 更新初始页面的员工数量提示
+          updateInitialStateUserCount();
+          
+          console.log(`✅ 员工列表加载完成，等待用户选择后查询数据`);
+        } else {
+          throw new Error('员工列表格式错误或为空');
+        }
+      } catch (error) {
+        console.error('获取部门员工失败:', error);
+        // 在员工选择器中显示错误状态
+        const userTip = document.getElementById('userTip');
+        const userBtn = document.getElementById('userBtn');
+        if (userTip && userBtn) {
+          userTip.innerText = '员工列表加载失败，请刷新页面重试';
+          userTip.style.color = '#ff6b6b';
+          userBtn.innerText = '加载失败';
+          userBtn.disabled = true;
+          userBtn.style.opacity = '0.6';
+        }
+        
+        // 同时在主区域显示错误状态
+        const container = document.querySelector('.chart-container');
+        container.innerHTML = `
+          <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: #232946; border-radius: 8px; margin: 20px;">
+            <div style="font-size: 48px; color: #ff6b6b; margin-bottom: 20px;">⚠️</div>
+            <h2 style="color: #fff; margin-bottom: 16px;">加载失败</h2>
+            <p style="color: #b0c4de; font-size: 16px;">获取部门员工列表失败，请刷新页面重试</p>
+            <button onclick="location.reload()" style="margin-top: 20px; padding: 10px 20px; background: #00eaff; color: #232946; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">刷新页面</button>
+          </div>
+        `;
+      }
+    }
+
+    // 更新初始状态的员工数量显示
+    function updateInitialStateUserCount() {
+      const container = document.querySelector('.chart-container');
+      if (container && departmentUsers.length > 0) {
+        // 在使用提示中添加员工数量信息
+        const tipSection = container.querySelector('div[style*="border: 1px dashed"]');
+        if (tipSection) {
+          const userCountInfo = document.createElement('div');
+          userCountInfo.style = 'margin-top: 15px; padding: 12px; background: #2a2f4a; border-radius: 6px; border-left: 3px solid #00eaff;';
+          userCountInfo.innerHTML = `
+            <div style="color: #00eaff; font-weight: bold; font-size: 14px;">👥 当前部门共有 ${departmentUsers.length} 名员工</div>
+            <div style="color: #b0c4de; font-size: 12px; margin-top: 4px;">选择特定员工可查看个人与部门对比数据</div>
+          `;
+          tipSection.appendChild(userCountInfo);
+        }
+      }
+    }
+
+    // 设置员工选择器
+    function setupUserSelector() {
+      const userSelector = document.getElementById('userSelector');
+      const userBtn = document.getElementById('userBtn');
+      const userList = document.getElementById('userList');
+      const userTip = document.getElementById('userTip');
+
+      // 员工选择器已经在HTML中设为显示，无需重复设置
+      
+      // 根据员工数量调整提示信息
+      if (departmentUsers.length <= 3) {
+        userTip.innerText = `部门共${departmentUsers.length}人，请选择员工进行分析`;
+        userTip.style.color = '#00eaff';
+      } else {
+        userTip.innerText = `部门共${departmentUsers.length}人，请选择特定员工进行对比分析`;
+        userTip.style.color = '#ff6b6b';
+      }
+      
+      // 添加搜索框
+      const searchInput = document.createElement('input');
+      searchInput.type = 'text';
+      searchInput.className = 'user-search';
+      searchInput.placeholder = '搜索员工姓名或设备号...';
+      
+      // 生成员工列表
+      function renderUserList(filterText = '') {
+        let html = '';
+        const filteredUsers = departmentUsers.filter(user => 
+          !filterText || 
+          user.user_name.toLowerCase().includes(filterText.toLowerCase()) ||
+          user.real_name?.toLowerCase().includes(filterText.toLowerCase()) ||
+          user.device_sn.toLowerCase().includes(filterText.toLowerCase())
+        );
+        
+        html += '<div style="padding:8px; border-bottom:1px solid #444; background:#1a1e35;">';
+        html += '<input type="text" class="user-search" placeholder="🔍 搜索员工姓名或设备号..." />';
+        html += '</div>';
+        
+        if (filteredUsers.length === 0) {
+          html += '<div style="padding:12px; text-align:center; color:#888;">暂无匹配的员工</div>';
+        } else {
+          filteredUsers.forEach(user => {
+            const isSelected = user.id == selectedUserId ? 'checked' : '';
+            const displayName = user.real_name || user.user_name;
+            html += `<label title="${displayName} (${user.device_sn})">
+              <input type="radio" name="userSelect" value="${user.id}" data-name="${displayName}" ${isSelected}/>
+              <span style="font-weight:bold;">${displayName}</span>
+              <span style="color:#888; font-size:12px; margin-left:4px;">(${user.device_sn})</span>
+            </label>`;
+          });
+        }
+        
+        userList.innerHTML = html;
+        
+        // 重新绑定搜索框事件
+        const newSearchInput = userList.querySelector('.user-search');
+        if (newSearchInput) {
+          newSearchInput.value = filterText;
+          newSearchInput.oninput = (e) => {
+            renderUserList(e.target.value.trim());
+          };
+          newSearchInput.onclick = (e) => e.stopPropagation();
+        }
+      }
+      
+      renderUserList();
+
+      // 设置按钮文本
+      const currentUser = departmentUsers.find(u => u.id == selectedUserId);
+      if (currentUser) {
+        const displayName = currentUser.real_name || currentUser.user_name;
+        userBtn.innerText = displayName;
+      } else {
+        userBtn.innerText = '请选择员工';
+      }
+
+      // 绑定点击事件
+      userBtn.onclick = () => {
+        const isVisible = userList.style.display === 'block';
+        userList.style.display = isVisible ? 'none' : 'block';
+        
+        if (!isVisible) {
+          // 聚焦搜索框
+          setTimeout(() => {
+            const searchInput = userList.querySelector('.user-search');
+            if (searchInput) searchInput.focus();
+          }, 100);
+        }
+      };
+
+      // 点击员工选项事件
+      userList.onclick = (e) => {
+        if (e.target.tagName === 'INPUT' && e.target.type === 'radio') {
+          selectedUserId = e.target.value;
+          const userName = e.target.getAttribute('data-name');
+          userBtn.innerText = userName;
+          userList.style.display = 'none';
+          
+          console.log(`👤 选择员工: ${userName} (ID: ${selectedUserId})`);
+          
+          // 显示查询提示而不是自动加载数据
+          showQueryPrompt(userName);
+        }
+      };
+
+      // 点击其他地方关闭员工选择器
+      document.body.addEventListener('click', (e) => {
+        if (!e.target.closest('#userSelector .metric-dropdown')) {
+          userList.style.display = 'none';
+        }
+      });
+    }
+
+    // 显示查询提示
+    function showQueryPrompt(userName) {
+      const container = document.querySelector('.chart-container');
+      container.innerHTML = `
+        <div style="grid-column: 1 / -1; text-align: center; padding: 60px 20px; background: #232946; border-radius: 8px; margin: 20px;">
+          <div style="font-size: 48px; color: #00eaff; margin-bottom: 20px;">👤</div>
+          <h2 style="color: #fff; margin-bottom: 16px; font-size: 24px;">已选择员工：${userName}</h2>
+          <p style="color: #b0c4de; font-size: 18px; margin-bottom: 30px; line-height: 1.6;">
+            点击上方"查询"按钮开始分析健康趋势数据
+          </p>
+          <div style="background: #1a1e35; padding: 30px; border-radius: 8px; border: 2px solid #00eaff; max-width: 600px; margin: 0 auto;">
+            <div style="color: #00eaff; font-weight: bold; font-size: 20px; margin-bottom: 20px;">🎯 准备就绪</div>
+            <div style="color: #b0c4de; font-size: 16px; text-align: left; line-height: 1.8;">
+              <div style="margin-bottom: 12px;">✅ <strong>员工已选择</strong>：${userName}</div>
+              <div style="margin-bottom: 12px;">✅ <strong>时间范围</strong>：${document.getElementById('startDate').value} 至 ${document.getElementById('endDate').value}</div>
+              <div style="margin-bottom: 12px;">✅ <strong>分析模式</strong>：个人数据 vs 部门平均对比</div>
+              <div style="color: #ffd700;">🔍 <strong>下一步</strong>：点击上方蓝色"查询"按钮开始分析</div>
+            </div>
+          </div>
+          <div style="margin-top: 30px;">
+            <button onclick="loadTrendData()" style="
+              padding: 12px 30px; font-size: 18px; font-weight: bold;
+              background: linear-gradient(45deg, #00eaff, #38f9d7);
+              color: #232946; border: none; border-radius: 8px; cursor: pointer;
+              box-shadow: 0 4px 15px rgba(0, 234, 255, 0.3);
+              transition: all 0.3s ease;
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 6px 20px rgba(0, 234, 255, 0.4)';" 
+               onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 4px 15px rgba(0, 234, 255, 0.3)';">
+              🚀 开始分析健康趋势
+            </button>
+          </div>
+          <div style="margin-top: 20px; color: #888; font-size: 14px;">
+            💡 您也可以先调整上方的时间范围，然后再点击查询
+          </div>
+        </div>
+      `;
+    }
+
+    function loadTrendData() {
+      loading.style.display='flex';nodata.style.display='none';
+      const startDate = document.getElementById('startDate').value;
+      const endDate = document.getElementById('endDate').value;
+      
+      // 使用选择的员工ID，如果没有选择则传空
+      const currentUserId = selectedUserId || '';
+      
+      console.log(`🔄 加载健康趋势数据: userId=${currentUserId}, deptId=${deptId}`);
+      
+      let url = `/health_data/trends?orgId=${deptId||''}&userId=${currentUserId}&startDate=${startDate}&endDate=${endDate}`;
+      fetch(url).then(r=>r.json()).then(initCharts).catch(e=>{loading.style.display='none';console.error('数据加载失败',e)});
+    }
+
+    function initCharts(resp) {
+      loading.style.display='none';
+      if(!resp||!resp.timestamps||!resp.timestamps.length){
+        nodata.style.display='block';
+        document.querySelector('.chart-container').innerHTML='';
+        return;
+      }else{nodata.style.display='none';}
+      const ts = resp.timestamps, dept = resp.dept, users = resp.users;
+      const metrics = [
+        { code:'heart_rate',    name:'心率(bpm)', color:'#3a6ea5' },
+        { code:'blood_oxygen',  name:'血氧(%)', color:'#6c757d' },
+        { code:'pressure_high', name:'收缩压(mmHg)', color:'#bfa180' },
+        { code:'pressure_low',  name:'舒张压(mmHg)', color:'#5c8374' },
+        { code:'temperature',   name:'体温(℃)', color:'#bdbdbd' },
+        { code:'stress',        name:'压力指数', color:'#e0a96d' },
+        { code:'step',          name:'步数(steps)', color:'#7b8fa1' },
+        { code:'distance',      name:'距离(m)', color:'#a3a3a3' },
+        { code:'calorie',       name:'卡路里(kcal)', color:'#c9b29b' }
+      ];
+      const userColors = [
+        '#3a6ea5','#6c757d','#bfa180','#5c8374','#bdbdbd','#e0a96d','#7b8fa1','#a3a3a3','#c9b29b','#8d6748','#4e5d6c','#b0a990','#7c8c8d'
+      ];
+      
+      const allUsers = Object.keys(users);
+      
+      // 检查员工数量并决定显示策略
+      let shownUsers;
+      let legendHtml = `<span style='color:#00eaff;font-weight:bold;text-shadow:0 2px 8px #0008;'>■ 部门平均</span>`;
+      
+      // 检查是否有选择的员工
+      const currentUser = departmentUsers.find(u => u.id == selectedUserId);
+      if (currentUser && (allUsers.includes(currentUser.user_name) || allUsers.includes(currentUser.real_name))) {
+        const userName = allUsers.find(name => name === currentUser.user_name || name === currentUser.real_name);
+        shownUsers = [userName];
+        legendHtml += ` <span style='color:${userColors[0]};font-weight:bold;text-shadow:0 2px 8px #0008;'>●</span> ${userName}`;
+      } else {
+        shownUsers = [];
+        legendHtml += ` <span style='color:#888;font-style:italic;'>请选择员工查看个人数据</span>`;
+      }
+      
+      document.getElementById('legendBar').innerHTML = legendHtml;
+
+      const metricBtn = document.getElementById('metricBtn');
+      const metricList = document.getElementById('metricList');
+      let selectedMetrics = ['heart_rate']; // 默认只显示心率
+
+      function renderMetricList() {
+        let html = `<label class="all"><input type="checkbox" id="allMetric" ${selectedMetrics.length===metrics.length?'checked':''}/>全选</label>`;
+        metrics.forEach(m=>{
+          html += `<label><input type="checkbox" value="${m.code}" ${selectedMetrics.includes(m.code)?'checked':''}/> ${m.name}</label>`;
+        });
+        metricList.innerHTML = html;
+      }
+      renderMetricList();
+
+      metricBtn.onclick = ()=>{metricList.style.display=metricList.style.display==='block'?'none':'block';};
+      document.body.onclick = e=>{
+        if(!e.target.closest('.metric-dropdown')) metricList.style.display='none';
+      };
+      metricList.onclick = e=>{
+        if(e.target.tagName==='INPUT'){
+          if(e.target.id==='allMetric'){
+            selectedMetrics = e.target.checked ? metrics.map(m=>m.code) : [];
+            renderMetricList();
+          }else{
+            const v = e.target.value;
+            if(e.target.checked) selectedMetrics.push(v);
+            else selectedMetrics = selectedMetrics.filter(x=>x!==v);
+            document.getElementById('allMetric').checked = selectedMetrics.length===metrics.length;
+          }
+          metricBtn.innerText = selectedMetrics.length===metrics.length?'全部体征':selectedMetrics.length===1?metrics.find(m=>m.code===selectedMetrics[0]).name:metrics.filter(m=>selectedMetrics.includes(m.code)).map(m=>m.name).join('、')||'请选择';
+          renderCharts();
+          setTimeout(() => { metricList.style.display = 'none'; }, 200);
+        }
+      };
+      // 确保首次加载自动渲染
+      renderCharts();
+
+      // 体征选择器美化，支持搜索
+      let searchInput=document.createElement('input');
+      searchInput.type='text';searchInput.placeholder='搜索体征...';searchInput.style='width:120px;margin:0 8px 8px 8px;padding:2px 8px;border-radius:4px;border:1px solid #444;background:#232946;color:#fff;';
+      metricList.prepend(searchInput);
+      searchInput.oninput=()=>{
+        let v=searchInput.value.trim();
+        Array.from(metricList.querySelectorAll('label')).forEach(l=>{
+          if(l.className==='all')return;
+          l.style.display=l.innerText.includes(v)?'block':'none';
+        });
+      };
+
+      function renderCharts() {
+        const container = document.querySelector('.chart-container');
+        container.innerHTML = '';
+        let n = selectedMetrics.length, cols = n==1?1:n<=3?2:n<=6?3:3;
+        container.style.gridTemplateColumns = `repeat(${cols},1fr)`;
+        selectedMetrics.forEach(code=>{
+          const m = metrics.find(x=>x.code===code);
+          const div = document.createElement('div');
+          div.className = 'chart';
+          div.id = 'chart-'+code;
+          div.style.height = n==1 ? '500px' : '300px';
+          // 导出/全屏按钮
+          let btnBar=document.createElement('div');
+          btnBar.style='position:absolute;right:12px;top:8px;z-index:2;';
+          let btnExport=document.createElement('button');
+          btnExport.innerText='导出';btnExport.style='margin-right:8px;padding:2px 10px;border-radius:4px;border:none;background:#00eaff;color:#232946;cursor:pointer;font-weight:bold;';
+          let btnFull=document.createElement('button');
+          btnFull.innerText='全屏';btnFull.style='padding:2px 10px;border-radius:4px;border:none;background:#00eaff;color:#232946;cursor:pointer;font-weight:bold;';
+          btnExport.onclick=()=>{
+            let chart=echarts.getInstanceByDom(div)||echarts.init(div);
+            let url=chart.getDataURL({type:'png',backgroundColor:'#232946'});
+            let a=document.createElement('a');a.href=url;a.download=m.name+'.png';a.click();
+          };
+          btnFull.onclick=()=>{
+            if(div.requestFullscreen)div.requestFullscreen();
+            setTimeout(()=>{let chart=echarts.getInstanceByDom(div)||echarts.init(div);chart.resize();},300);
+          };
+          btnBar.appendChild(btnExport);btnBar.appendChild(btnFull);
+          div.style.position='relative';div.appendChild(btnBar);
+          container.appendChild(div);
+        });
+        drawCharts(selectedMetrics);
+      }
+
+      function drawCharts(selectedMetrics) {
+        selectedMetrics.forEach(code=>{
+          const m = metrics.find(x=>x.code===code);
+          const dom = document.getElementById('chart-'+code);
+          const chart = echarts.init(dom);
+          const series = [{
+            name:'部门平均',type:'line',smooth:true,data:dept[m.code],
+            lineStyle:{width:4,color:m.color,shadowColor:m.color,shadowBlur:16},
+            itemStyle:{opacity:1},sampling:'lttb',z:10
+          }];
+          allUsers.forEach((u,i)=>{
+            const data = ts.map(t=>users[u][t]&&users[u][t][m.code]!=null?users[u][t][m.code]:null);
+            series.push({
+              name:u,type:'line',smooth:true,data,
+              showSymbol:false,
+              lineStyle:{
+                width:2,
+                color:userColors[i%userColors.length],
+                opacity:shownUsers.includes(u)?0.85:0.18,
+                shadowColor:userColors[i%userColors.length],
+                shadowBlur:shownUsers.includes(u)?8:0
+              },
+              itemStyle:{opacity:shownUsers.includes(u)?0.85:0.18},
+              sampling:'lttb',emphasis:{focus:'series'}
+            });
+          });
+          const legendSelected = { '部门平均': true };
+          allUsers.forEach((u,i)=>{ legendSelected[u] = shownUsers.includes(u); });
+          chart.setOption({
+            color: [m.color,...userColors],
+            backgroundColor:'#232946',
+            title:{
+              text:m.name,
+              textStyle:{
+                color:'#fff',
+                fontWeight:'bold',
+                fontSize:22,
+                textShadowColor:'#000a',
+                textShadowBlur:8,
+                textShadowOffsetY:2
+              },
+              left:'center'
+            },
+            tooltip:{trigger:'axis',axisPointer:{type:'cross'},backgroundColor:'#232946cc',borderColor:'#00eaff',textStyle:{color:'#fff'}},
+            legend:{
+              show:false,
+              textStyle:{
+                color:'#b0c4de',
+                fontWeight:'bold',
+                fontSize:18,
+                textShadowColor:'#000a',
+                textShadowBlur:6
+              }
+            },
+            grid:{left:40,right:20,bottom:40,top:60},
+            xAxis:{type:'category',data:ts,axisLabel:{color:'#b0c4de',rotate:45,fontSize:11}},
+            yAxis:{type:'value',name:m.name,nameTextStyle:{color:'#b0c4de'},axisLabel:{color:'#b0c4de'}},
+            dataZoom:[{
+              type:'slider',
+              start:80,
+              end:100,
+              backgroundColor:'#1a1e35',
+              fillerColor:'#00eaff66',
+              borderColor:'#00eaff',
+              dataBackground: {
+                lineStyle: { color: '#00eaff88', width: 2 },
+                areaStyle: { color: '#00eaff22' }
+              },
+              selectedDataBackground: {
+                lineStyle: { color: '#ffffff', width: 2 },
+                areaStyle: { color: '#00eaff44' }
+              },
+              handleStyle: {
+                color: '#00eaff',
+                borderColor: '#ffffff',
+                borderWidth: 2
+              },
+              textStyle: { color: '#ffffff' }
+            }],
+            series
+          });
+        });
+      }
+    }
+  </script>
+</body>
+</html>

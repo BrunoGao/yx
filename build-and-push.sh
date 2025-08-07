@@ -1,6 +1,6 @@
 #!/bin/bash
 # Created Time:    2025-06-09 07:43:24
-# Modified Time:   2025-06-26 20:39:46
+# Modified Time:   2025-07-17 06:01:37
 #!/bin/bash
 # 灵境万象系统 - 本地多架构构建脚本 v1.2.6
 
@@ -15,13 +15,15 @@ if [ -f "monitoring-versions.env" ]; then
 else
     echo "⚠️ 未找到版本配置文件，使用默认配置"
     # 默认配置
-    LJWX_VERSION="1.2.16"
+    LJWX_VERSION="1.2.18"
     LJWX_GRAFANA_VERSION="1.2.6"
     LJWX_PROMETHEUS_VERSION="1.2.6"
     LJWX_LOKI_VERSION="1.2.6"
     LJWX_PROMTAIL_VERSION="1.2.6"
     LJWX_ALERTMANAGER_VERSION="1.2.6"
-    REGISTRY="crpi-yilnm6upy4pmbp67.cn-shenzhen.personal.cr.aliyuncs.com/ljwx"  # 阿里云镜像仓库
+    LOCAL_REGISTRY="14.127.218.229:5001/ljwx"  # 本地镜像服务器
+    ALIYUN_REGISTRY="crpi-yilnm6upy4pmbp67.cn-shenzhen.personal.cr.aliyuncs.com/ljwx"  # 阿里云镜像仓库
+    REGISTRY="${LOCAL_REGISTRY}"  # 默认使用本地镜像服务器
     PLATFORMS="linux/amd64,linux/arm64"  # 多架构构建
 fi
 
@@ -29,8 +31,9 @@ fi
 BUILDER_NAME="multiarch-builder"
 
 # 多架构构建模式配置  
-LOCAL_BUILD=${LOCAL_BUILD:-false}  # 默认多架构构建
-PUSH_TO_REGISTRY=${PUSH_TO_REGISTRY:-true}  # 默认推送到阿里云
+LOCAL_BUILD=${LOCAL_BUILD:-true}  # 默认本地构建(避免网络问题)
+PUSH_TO_REGISTRY=${PUSH_TO_REGISTRY:-true}  # 默认推送到镜像仓库
+USE_LOCAL_REGISTRY=${USE_LOCAL_REGISTRY:-true}  # 默认使用本地镜像服务器
 
 # 设置代理（网络优化）
 export HTTP_PROXY=http://127.0.0.1:7890
@@ -126,7 +129,7 @@ export_mysql_data() {
     # MySQL连接参数
     local mysql_host="127.0.0.1"
     local mysql_user="root"
-    local mysql_password="aV5mV7kQ!@#"
+    local mysql_password="123456"
     local mysql_database="test"
     local target_database="lj-06"
     
@@ -182,16 +185,31 @@ export_mysql_data() {
     fi
 }
 
-# 自动登录阿里云镜像仓库
-login_aliyun() {
-    if [ "$PUSH_TO_REGISTRY" = "true" ] && [[ "$REGISTRY" == *"aliyuncs.com"* ]]; then
-        echo "🔐 登录阿里云Docker镜像仓库..."
-        echo "admin123" | docker login --username brunogao --password-stdin crpi-yilnm6upy4pmbp67.cn-shenzhen.personal.cr.aliyuncs.com
-        if [ $? -eq 0 ]; then
-            echo "✅ 阿里云登录成功"
-        else
-            echo "❌ 阿里云登录失败，请检查凭据"
-            exit 1
+# 镜像仓库登录函数
+login_registry() {
+    if [ "$PUSH_TO_REGISTRY" = "true" ]; then
+        if [ "$USE_LOCAL_REGISTRY" = "true" ]; then
+            echo "🔐 配置本地镜像仓库 14.127.218.229:5001..."
+            # 本地镜像服务器通常不需要认证，但检查连接性
+            if curl -f -s "http://14.127.218.229:5001/v2/" > /dev/null; then
+                echo "✅ 本地镜像服务器连接成功"
+            else
+                echo "❌ 本地镜像服务器 14.127.218.229:5001 无法访问"
+                echo "💡 请确保:"
+                echo "   1. 镜像服务器正在运行"
+                echo "   2. 网络连接正常"
+                echo "   3. 防火墙允许 5001 端口"
+                exit 1
+            fi
+        elif [[ "$REGISTRY" == *"aliyuncs.com"* ]]; then
+            echo "🔐 登录阿里云Docker镜像仓库..."
+            echo "admin123" | docker login --username brunogao --password-stdin crpi-yilnm6upy4pmbp67.cn-shenzhen.personal.cr.aliyuncs.com
+            if [ $? -eq 0 ]; then
+                echo "✅ 阿里云登录成功"
+            else
+                echo "❌ 阿里云登录失败，请检查凭据"
+                exit 1
+            fi
         fi
     fi
 }
@@ -218,11 +236,14 @@ if [ $# -eq 0 ]; then
     echo "   $0 alertmanager           # 构建定制化AlertManager"
     echo ""
     echo "🎯 构建模式:"
-    echo "   LOCAL_BUILD=false         # 多架构构建(默认)"
-    echo "   PUSH_TO_REGISTRY=true     # 推送到阿里云(默认)"
+    echo "   LOCAL_BUILD=false             # 多架构构建(默认)"
+    echo "   PUSH_TO_REGISTRY=true         # 推送到镜像仓库(默认)"
+    echo "   USE_LOCAL_REGISTRY=true       # 使用本地镜像服务器(默认)"
+    echo "   USE_LOCAL_REGISTRY=false      # 使用阿里云镜像仓库"
     echo ""
     echo "💡 当前架构: $PLATFORMS"
     echo "📊 当前版本: 应用 $LJWX_VERSION, 监控 $LJWX_GRAFANA_VERSION"
+    echo "🏷️  当前仓库: $([ "$USE_LOCAL_REGISTRY" = "true" ] && echo "本地 $LOCAL_REGISTRY" || echo "阿里云 $ALIYUN_REGISTRY")"
     echo "🏷️  镜像前缀: $REGISTRY"
     exit 1
 fi
@@ -465,7 +486,11 @@ show_summary() {
     fi
     
     echo ""
-    echo "🚀 推送到阿里云的镜像:"
+    if [ "$USE_LOCAL_REGISTRY" = "true" ]; then
+        echo "🚀 推送到本地镜像服务器的镜像:"
+    else
+        echo "🚀 推送到阿里云的镜像:"
+    fi
     if [[ " $@ " =~ " all " ]] || [[ " $@ " =~ " apps " ]]; then
         echo "   $REGISTRY/ljwx-mysql:$LJWX_VERSION"
         echo "   $REGISTRY/ljwx-redis:$LJWX_VERSION"
@@ -474,13 +499,40 @@ show_summary() {
         echo "   $REGISTRY/ljwx-admin:$LJWX_VERSION"
     fi
     echo ""
-    echo "   客户可使用命令拉取: docker pull $REGISTRY/ljwx-xxx:$LJWX_VERSION"
+    if [ "$USE_LOCAL_REGISTRY" = "true" ]; then
+        echo "   本地拉取命令: docker pull $REGISTRY/ljwx-xxx:$LJWX_VERSION"
+        echo "   远程拉取命令: docker pull 14.127.218.229:5001/ljwx/ljwx-xxx:$LJWX_VERSION"
+    else
+        echo "   客户可使用命令拉取: docker pull $REGISTRY/ljwx-xxx:$LJWX_VERSION"
+    fi
+}
+
+# 设置镜像仓库
+setup_registry() {
+    # 确保本地和阿里云仓库配置存在
+    if [ -z "$LOCAL_REGISTRY" ]; then
+        LOCAL_REGISTRY="14.127.218.229:5001/ljwx"
+    fi
+    if [ -z "$ALIYUN_REGISTRY" ]; then
+        ALIYUN_REGISTRY="crpi-yilnm6upy4pmbp67.cn-shenzhen.personal.cr.aliyuncs.com/ljwx"
+    fi
+    
+    if [ "$USE_LOCAL_REGISTRY" = "true" ]; then
+        REGISTRY="$LOCAL_REGISTRY"
+        echo "📍 使用本地镜像服务器: $REGISTRY"
+    else
+        REGISTRY="$ALIYUN_REGISTRY"
+        echo "📍 使用阿里云镜像仓库: $REGISTRY"
+    fi
 }
 
 # 主程序
 main() {
-    # 登录阿里云(如果需要推送)
-    login_aliyun
+    # 设置镜像仓库
+    setup_registry
+    
+    # 登录镜像仓库(如果需要推送)
+    login_registry
     
     # 初始化构建器
     init_buildx

@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>系统配置管理</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <style>
+        body {margin:0;padding:20px;background:transparent;color:#fff;font-family:Arial,sans-serif;}
+        .container {max-width:1600px;margin:0 auto;padding:20px;display:flex;flex-direction:column;gap:20px;}
+        .header {display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;}
+        .header h1 {margin:0;font-size:24px;color:#00e4ff;text-shadow:0 0 10px #00e4ff88;}
+        .header-actions {display:flex;gap:15px;}
+        .btn,.action-button{padding:8px 20px;border-radius:20px;border:none;background:linear-gradient(45deg,#00e4ff33,#00e4ff66);color:#00e4ff;cursor:pointer;transition:.3s;display:flex;align-items:center;gap:8px;font-weight:600;box-shadow:0 2px 8px #00e4ff22;}
+        .btn:hover,.action-button:hover{background:linear-gradient(45deg,#00e4ff66,#00e4ffcc);color:#fff;box-shadow:0 4px 16px #00e4ff44;}
+        .btn-primary{background:linear-gradient(45deg,#00e4ff,#0066ff);color:#fff;}
+        .btn-warning{background:linear-gradient(45deg,#ffa502,#ff793f);color:#fff;}
+        .btn-success{background:linear-gradient(45deg,#2ed573,#26ae60);color:#fff;}
+        .btn-danger{background:linear-gradient(45deg,#ff4757,#ff6b81);color:#fff;}
+        .tab-container{margin-bottom:20px;}
+        .tabs{display:flex;gap:10px;margin-bottom:20px;}
+        .tab{padding:10px 20px;border-radius:6px;background:rgba(1,19,38,0.8);color:#00e4ff;cursor:pointer;transition:.3s;border:1px solid #00e4ff33;font-weight:600;}
+        .tab.active{background:linear-gradient(45deg,#00e4ff,#0066ff);color:#fff;border:none;}
+        .tab-content{display:none;}
+        .tab-content.active{display:block;}
+        .alert-table-container{background:rgba(1,19,38,0.8);border-radius:12px;padding:20px;border:1px solid #00e4ff33;box-shadow:0 8px 32px 0 #1f268733;backdrop-filter:blur(4px);margin-bottom:20px;}
+        .alert-table-container h2{color:#00e4ff;font-size:20px;margin-bottom:20px;text-shadow:0 0 10px #00e4ff88;}
+        table{width:100%;border-collapse:separate;border-spacing:0;margin-top:10px;font-size:14px;}
+        th{background:linear-gradient(180deg,#00e4ff26 0%,#00e4ff0d 100%);color:#00e4ff;font-weight:600;padding:15px;text-align:left;border-bottom:2px solid #00e4ff33;text-shadow:0 0 10px #00e4ff55;position:sticky;top:0;z-index:10;}
+        th:first-child{border-top-left-radius:8px;}th:last-child{border-top-right-radius:8px;}
+        td{padding:12px 15px;border-bottom:1px solid #00e4ff1a;transition:.3s;}
+        tr:nth-child(even){background:#00e4ff08;}
+        tr:hover td{background:#00e4ff1a;transform:translateY(-2px);box-shadow:0 4px 8px #00e4ff1a;}
+        td:first-child{font-weight:600;color:#00e4ff;}
+        input[type='text'],input[type='number']{background:#23233a;color:#fff;border:1.5px solid #00e4ff44;border-radius:8px;padding:7px 14px;font-size:15px;min-width:90px;box-shadow:0 1px 4px #00e4ff11;transition:border .2s,box-shadow .2s;}
+        input[type='text']:focus,input[type='number']:focus{border:1.5px solid #00e4ff;box-shadow:0 0 8px #00e4ff55;}
+        input[type='checkbox']{width:22px;height:22px;accent-color:#00e4ff;box-shadow:0 1px 4px #00e4ff22;border-radius:5px;}
+        .interface-url-input{width:480px;}
+        .os-version-input{width:384px;}
+        @media (max-width:900px){th,td{font-size:13px;padding:7px 2px;}}
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-cogs"></i> 系统配置管理</h1>
+            <div class="header-actions">
+                <button class="btn btn-primary" id="saveAll"><i class="fas fa-save"></i> 一键保存</button>
+                <button class="btn btn-warning" id="rollback"><i class="fas fa-undo"></i> 回滚更改</button>
+                <button class="btn btn-success" id="optimize"><i class="fas fa-magic"></i> 应用最优配置</button>
+            </div>
+        </div>
+        <div class="tab-container">
+            <div class="tabs">
+                <div class="tab active" data-tab="customer">客户配置</div>
+                <div class="tab" data-tab="interface">接口配置</div>
+                <div class="tab" data-tab="health">健康数据配置</div>
+            </div>
+            <!-- 客户配置 -->
+            <div class="tab-content active" id="customer-tab">
+                <div class="alert-table-container">
+                    <h2>客户配置</h2>
+                    <div id="customerTable"></div>
+                </div>
+            </div>
+            <!-- 接口配置 -->
+            <div class="tab-content" id="interface-tab">
+                <div class="alert-table-container">
+                    <h2>接口配置</h2>
+                    <div id="interfaceTable"></div>
+                </div>
+            </div>
+            <!-- 健康数据配置 -->
+            <div class="tab-content" id="health-tab">
+                <div class="alert-table-container">
+                    <h2>健康数据配置</h2>
+                    <div style="display:flex;align-items:center;gap:16px;margin-bottom:10px;">
+                        <input id="healthSearch" type="text" placeholder="搜索数据类型..." style="background:#23233a;color:#fff;border:1.5px solid #00e4ff44;border-radius:8px;padding:7px 14px;font-size:15px;width:200px;">
+                        <button class="action-button" onclick="batchSwitch(true)">启用全部</button>
+                        <button class="action-button" onclick="batchSwitch(false)">禁用全部</button>
+                    </div>
+                    <div id="healthTable"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        let configData = {interface:{},health:{},customer:{}};
+        let originalConfigData = {};
+        function getUrlParam(name){const urlParams=new URLSearchParams(window.location.search);return urlParams.get(name);}
+        async function initConfig(){try{const customerId=getUrlParam('customerId');if(!customerId)return;const i=await fetch(`/get_interface_config?customerId=${customerId}`),id=await i.json();if(id.success){configData.interface=id.data;originalConfigData.interface=JSON.parse(JSON.stringify(id.data));renderInterfaceForm();}const h=await fetch(`/get_health_config?customerId=${customerId}`),hd=await h.json();if(hd.success){configData.health=hd.data;originalConfigData.health=JSON.parse(JSON.stringify(hd.data));renderHealthForm();}const c=await fetch(`/get_customer_config?customerId=${customerId}`),cd=await c.json();if(cd.success){configData.customer=cd.data;originalConfigData.customer=JSON.parse(JSON.stringify(cd.data));renderCustomerForm();}}catch(e){}};
+        // 接口配置表格渲染
+        function renderInterfaceForm(){const container=document.getElementById('interfaceTable');const rows=Object.entries(configData.interface).map(([name,url])=>`<tr><td>${name}</td><td><input type='text' class='interface-url-input' value='${url||''}' onchange="updateConfig('interface','${name}',this.value)"></td></tr>`).join('');container.innerHTML=`<table><thead><tr><th>接口名称</th><th>接口URL</th></tr></thead><tbody>${rows}</tbody></table>`;}
+        function updateConfig(type,key,value){configData[type][key]=value;}
+        // 健康数据配置表格渲染
+        function renderHealthForm(){const container=document.getElementById('healthTable');const search=(document.getElementById('healthSearch')||{}).value?.toLowerCase()||'';const dataTypeMap={exercise_daily:'每日运动',exercise_week:'每周运动',scientific_sleep:'科学睡眠',blood_oxygen:'血氧',heart_rate:'心率',temperature:'体温',stress:'压力',step:'步数',distance:'距离',calorie:'卡路里',sleep:'睡眠',location:'定位',ecg:'心电',wear:'佩戴',work_out:'锻炼'};const rows=Object.entries(configData.health).filter(([k])=>!search||k.toLowerCase().includes(search)||(dataTypeMap[k]||'').includes(search)).map(([dataType,c],i)=>`<tr><td title="${dataType}"><span style="color:#00e4ff;font-weight:600;">${dataTypeMap[dataType]||dataType}</span></td><td><input type="number" min="1" max="3600000" value="${c.frequency_interval||''}" onfocus="this.select()" onchange="updateHealthConfig('${dataType}','frequency_interval',this.value)" style="width:90px"></td><td><input type="checkbox" ${c.is_enabled?'checked':''} onchange="updateHealthConfig('${dataType}','is_enabled',this.checked)"></td><td><input type="checkbox" ${c.is_realtime?'checked':''} onchange="updateHealthConfig('${dataType}','is_realtime',this.checked)"></td><td><input type="number" min="0" max="999" value="${c.warning_high||''}" onfocus="this.select()" onchange="updateHealthConfig('${dataType}','warning_high',this.value)" style="width:70px"></td><td><input type="number" min="0" max="999" value="${c.warning_low||''}" onfocus="this.select()" onchange="updateHealthConfig('${dataType}','warning_low',this.value)" style="width:70px"></td><td><input type="number" min="0" max="99" value="${c.warning_cnt||''}" onfocus="this.select()" onchange="updateHealthConfig('${dataType}','warning_cnt',this.value)" style="width:60px"> 次</td><td><input type="number" min="0" max="9999" value="${c.weight==null?'':c.weight}" onfocus="this.select()" onchange="updateHealthConfig('${dataType}','weight',this.value===''?null:Number(this.value))" style="width:70px"></td></tr>`).join('');container.innerHTML=`<table><thead><tr><th>数据类型</th><th>频率间隔(ms)</th><th>是否启用</th><th>是否实时监听</th><th>触发上限</th><th>触发下限</th><th>次数(次)</th><th>权重</th></tr></thead><tbody>${rows}</tbody></table>`;}
+        function updateHealthConfig(dataType,field,value){if(!configData.health[dataType])configData.health[dataType]={};configData.health[dataType][field]=value;}
+        function batchSwitch(val){Object.values(configData.health).forEach(c=>c.xvv=val);renderHealthForm();}
+        document.getElementById('healthSearch').oninput=renderHealthForm;
+        // 客户配置表格渲染
+        function renderCustomerForm(){const container=document.getElementById('customerTable');const customerId=getUrlParam('customerId');const c=configData.customer[customerId]||{};container.innerHTML=`<table><thead><tr><th>客户名称</th><th>上传方式</th><th>操作系统版本</th><th>是否支持许可证</th><th>许可证密钥</th></tr></thead><tbody><tr><td><input type='text' value='${c.customer_name||''}' onchange="updateCustomerConfig('customer_name',this.value)"></td><td><input type='text' value='${c.upload_method||''}' onchange="updateCustomerConfig('upload_method',this.value)"></td><td><input type='text' class='os-version-input' value='${c.os_version||''}' onchange="updateCustomerConfig('os_version',this.value)"></td><td><input type='checkbox' ${c.is_support_license?'checked':''} onchange="updateCustomerConfig('is_support_license',this.checked)"></td><td><input type='text' value='${c.license_key||''}' onchange="updateCustomerConfig('license_key',this.value)"></td></tr></tbody></table>`;}
+        function updateCustomerConfig(field,value){const customerId=getUrlParam('customerId');if(!configData.customer[customerId])configData.customer[customerId]={};configData.customer[customerId][field]=value;}
+        // 保存配置
+        async function saveConfig(type){const customerId=getUrlParam('customerId');if(!customerId)return;const response=await fetch(`/save_${type}_config?customerId=${customerId}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(configData[type])});const result=await response.json();if(result.success){originalConfigData[type]=JSON.parse(JSON.stringify(configData[type]));}}
+        document.getElementById('saveAll').onclick=async()=>{await saveConfig('interface');await saveConfig('health');await saveConfig('customer');};
+        document.getElementById('rollback').onclick=()=>{configData=JSON.parse(JSON.stringify(originalConfigData));renderInterfaceForm();renderHealthForm();renderCustomerForm();};
+        document.getElementById('optimize').onclick=()=>{};
+        document.querySelectorAll('.tab').forEach(tab=>{tab.onclick=()=>{document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));tab.classList.add('active');document.getElementById(`${tab.dataset.tab}-tab`).classList.add('active');};});
+        document.addEventListener('DOMContentLoaded',initConfig);
+    </script>
+</body>
+</html> 

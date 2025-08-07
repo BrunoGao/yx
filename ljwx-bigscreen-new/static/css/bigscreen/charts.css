@@ -1,0 +1,42 @@
+/* 告警图表专用样式 */
+#alertTypeChart, #alertLevelChart, #alertStatusChart, #alertTrendChart {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 90px !important; /* 增加最小高度：从80px到90px */
+  max-height: 180px !important; /* 增加单个图表最大高度：从150px增加到180px，给告警类型更多显示空间 */
+  overflow: hidden !important;
+}
+
+/* 特别限制告警类型图表高度 */
+#alertTypeChart {
+  max-height: 160px !important; /* 增加告警类型图表高度：从120px增加到160px，当类型增多时有更好的显示效果 */
+}
+
+/* 告警面板网格布局优化 */
+.alert-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px; /* 减少间距适应更窄的宽度 */
+  height: calc(100% - 55px); /* 为顶部统计留出空间，给图表区域更多空间 */
+  min-height: 250px; /* 增加最小高度：保证告警类型卡片有足够显示空间 */
+  max-height: none; /* 限制最大高度防止变形 */
+  overflow: hidden; /* 防止内容溢出 */
+}
+
+/* 设备统计样式 */
+.device-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px; /* 减少间距 */
+  margin-bottom: 8px; /* 减少底部边距 */
+  height: 50px; /* 减少固定高度 */
+}
+
+.device-stat-item {
+  background: rgba(0, 228, 255, 0.1);
+  border-radius: 4px;
+  padding: 6px;
+  text-align: center;
+  border: 1px solid rgba(0, 228, 255, 0.2);
+} 

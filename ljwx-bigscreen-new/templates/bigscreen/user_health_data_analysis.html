@@ -1,0 +1,2618 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>健康数据分析</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/themes/dark.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.10.7/dayjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/dayjs@1.10.7/locale/zh-cn.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.9/dist/flatpickr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.9/dist/l10n/zh.js"></script>
+    <script src="{{ url_for('static', filename='js/echarts.min.js') }}"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: #001529;
+            color: #fff;
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(0, 15, 29, 0.9);
+            border-radius: 8px;
+            border: 1px solid rgba(0, 240, 255, 0.1);f
+        }
+
+        .header-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-info {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .user-info-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .user-info-item i {
+            color: #00f0ff;
+            font-size: 14px;
+        }
+
+        .date-picker-container {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            background: rgba(0, 15, 29, 0.8);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 8px;
+            padding: 8px 15px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            min-width: 280px;
+        }
+
+        .date-picker-container:hover {
+            border-color: rgba(0, 240, 255, 0.8);
+            box-shadow: 0 0 10px rgba(0, 240, 255, 0.2);
+        }
+
+        .date-picker-container i {
+            margin-right: 8px;
+            color: #00f0ff;
+            font-size: 16px;
+        }
+
+        .date-picker {
+            background: transparent;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0;
+            width: 100%;
+        }
+
+        .date-picker:focus {
+            outline: none;
+        }
+
+        /* Flatpickr Custom Styles */
+        .flatpickr-calendar.dark {
+            background: rgba(0, 15, 29, 0.95);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+            margin-top: 5px;
+        }
+
+        .flatpickr-calendar.dark .flatpickr-months {
+            background: rgba(0, 240, 255, 0.1);
+            padding: 10px 0;
+        }
+
+        .flatpickr-calendar.dark .flatpickr-month {
+            color: #00f0ff;
+        }
+
+        .flatpickr-calendar.dark .flatpickr-weekday {
+            color: #00f0ff;
+            font-weight: bold;
+        }
+
+        .flatpickr-calendar.dark .flatpickr-day {
+            color: #fff;
+            border-radius: 4px;
+            margin: 2px;
+        }
+
+        .flatpickr-calendar.dark .flatpickr-day.selected {
+            background: #00f0ff;
+            border-color: #00f0ff;
+            color: #001529;
+        }
+
+        .flatpickr-calendar.dark .flatpickr-day:hover {
+            background: rgba(0, 240, 255, 0.2);
+        }
+
+        .flatpickr-calendar.dark .flatpickr-day.today {
+            border-color: #00f0ff;
+            color: #00f0ff;
+        }
+
+        .flatpickr-calendar.dark .flatpickr-day.inRange {
+            background: rgba(0, 240, 255, 0.2);
+            border-color: transparent;
+        }
+
+        .flatpickr-calendar.dark .flatpickr-day.startRange,
+        .flatpickr-calendar.dark .flatpickr-day.endRange {
+            background: #00f0ff;
+            border-color: #00f0ff;
+            color: #001529;
+        }
+
+        .quick-select {
+            position: absolute;
+            top: calc(100% + 5px);
+            left: 0;
+            right: 0;
+            background: rgba(0, 15, 29, 0.95);
+            border: 1px solid rgba(0, 240, 255, 0.3);
+            border-radius: 8px;
+            padding: 8px 0;
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        }
+
+        .quick-select-option {
+            padding: 10px 15px;
+            color: #fff;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+        }
+
+        .quick-select-option:hover {
+            background: rgba(0, 240, 255, 0.1);
+            color: #00f0ff;
+        }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(700px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            background: rgba(0, 15, 29, 0.9);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: 1px solid rgba(0, 240, 255, 0.1);
+            transition: transform 0.3s ease;
+            min-height: 400px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-content {
+            flex: 1;
+            min-height: 400px;
+            width: 100%;
+            position: relative;
+        }
+
+        .chart-title {
+            font-size: 1.2rem;
+            color: #fff;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+        }
+
+        .health-insights {
+            background: rgba(0, 15, 29, 0.9);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 20px;
+            border: 1px solid rgba(0, 240, 255, 0.1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .health-insights h2 {
+            color: #fff;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid rgba(0, 240, 255, 0.2);
+            display: flex;
+            align-items: center;
+        }
+
+        .health-insights h2:before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(to bottom, #00f0ff, #0066ff);
+            margin-right: 10px;
+            border-radius: 2px;
+        }
+
+        .health-score {
+            text-align: center;
+            margin: 30px 0;
+            position: relative;
+            padding: 20px;
+            background: rgba(0, 15, 29, 0.8);
+            border-radius: 15px;
+            border: 1px solid rgba(0, 240, 255, 0.2);
+        }
+
+        .score-value {
+            font-size: 48px;
+            font-weight: bold;
+            background: linear-gradient(45deg, #00f0ff, #0066ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px rgba(0, 240, 255, 0.3);
+            margin-bottom: 10px;
+            position: relative;
+            display: inline-block;
+            transition: color 0.3s ease;
+        }
+
+        .score-value:after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 40px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #00f0ff, transparent);
+        }
+
+        .score-level {
+            font-size: 18px;
+            color: #fff;
+            margin-top: 10px;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+        }
+
+        .score-value.excellent {
+            background: linear-gradient(45deg, #2ed573, #7bed9f);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .score-value.good {
+            background: linear-gradient(45deg, #00f0ff, #0066ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .score-value.normal {
+            background: linear-gradient(45deg, #ffa502, #ff793f);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .score-value.warning {
+            background: linear-gradient(45deg, #ff4757, #ff6b81);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .metric-card {
+            background: rgba(0, 15, 29, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 1px solid rgba(0, 240, 255, 0.1);
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(0, 240, 255, 0.1);
+            border-color: rgba(0, 240, 255, 0.3);
+        }
+
+        .metric-card:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: linear-gradient(to bottom, #00f0ff, #0066ff);
+            opacity: 0.8;
+        }
+
+        .metric-card.normal:before { background: linear-gradient(to bottom, #2ed573, #7bed9f); }
+        .metric-card.warning:before { background: linear-gradient(to bottom, #ffa502, #ff793f); }
+        .metric-card.danger:before { background: linear-gradient(to bottom, #ff4757, #ff6b81); }
+
+        .metric-name {
+            font-size: 1.1rem;
+            color: #fff;
+            margin-bottom: 15px;
+            font-weight: 500;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #00f0ff;
+            margin-bottom: 5px;
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.3);
+        }
+
+        .metric-unit {
+            font-size: 0.9rem;
+            color: #8e9daa;
+            margin-bottom: 10px;
+        }
+
+        .metric-score {
+            font-size: 1rem;
+            color: #fff;
+            margin: 10px 0;
+            padding: 5px 10px;
+            background: rgba(0, 240, 255, 0.1);
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .metric-message {
+            font-size: 0.9rem;
+            color: #8e9daa;
+            line-height: 1.5;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .health-suggestions {
+            margin-top: 30px;
+            background: rgba(0, 15, 29, 0.6);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid rgba(0, 240, 255, 0.1);
+        }
+
+        .health-suggestions h3 {
+            color: #fff;
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            position: relative;
+            padding-left: 15px;
+        }
+
+        .health-suggestions h3:before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(to bottom, #00f0ff, #0066ff);
+            border-radius: 2px;
+        }
+
+        .suggestion-category {
+            margin-bottom: 25px;
+        }
+
+        .suggestion-category-title {
+            font-size: 1.1rem;
+            color: #00f0ff;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        .suggestion-category-title i {
+            margin-right: 8px;
+            font-size: 18px;
+        }
+
+        .suggestion-item {
+            background: rgba(0, 15, 29, 0.8);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(0, 240, 255, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .suggestion-item:hover {
+            transform: translateY(-2px);
+            border-color: rgba(0, 240, 255, 0.3);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .suggestion-item:before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, rgba(0, 240, 255, 0.05), transparent);
+            pointer-events: none;
+        }
+
+        .suggestion-title {
+            font-size: 1.1rem;
+            color: #fff;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+        }
+
+        .suggestion-title i {
+            margin-right: 8px;
+            color: #00f0ff;
+        }
+
+        .suggestion-content {
+            color: rgba(255, 255, 255, 0.8);
+            line-height: 1.6;
+            font-size: 0.95rem;
+            position: relative;
+            padding-left: 20px;
+        }
+
+        .suggestion-content:before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 8px;
+            width: 6px;
+            height: 6px;
+            background: #00f0ff;
+            border-radius: 50%;
+        }
+
+        .suggestion-priority {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 12px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            background: rgba(0, 240, 255, 0.1);
+            color: #00f0ff;
+        }
+
+        .suggestion-priority.high {
+            background: rgba(255, 71, 87, 0.1);
+            color: #ff4757;
+        }
+
+        .suggestion-priority.medium {
+            background: rgba(255, 165, 2, 0.1);
+            color: #ffa502;
+        }
+
+        .suggestion-metrics {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            gap: 15px;
+        }
+
+        .suggestion-metric {
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .suggestion-metric-value {
+            color: #00f0ff;
+            margin: 0 4px;
+        }
+
+        .suggestion-metric-icon {
+            margin-right: 4px;
+            font-size: 14px;
+        }
+
+        /* 添加动画效果 */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .health-score,
+        .metric-card,
+        .suggestion-item {
+            animation: fadeIn 0.5s ease forwards;
+        }
+
+        .metric-card:nth-child(2) { animation-delay: 0.1s; }
+        .metric-card:nth-child(3) { animation-delay: 0.2s; }
+        .metric-card:nth-child(4) { animation-delay: 0.3s; }
+        .metric-card:nth-child(5) { animation-delay: 0.4s; }
+        .metric-card:nth-child(6) { animation-delay: 0.5s; }
+
+        /* 添加脉冲动画效果 */
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(0, 240, 255, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0); }
+        }
+
+        .health-score {
+            animation: pulse 2s infinite;
+        }
+
+        /* 状态指示器样式 */
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-indicator.normal { background: #2ed573; box-shadow: 0 0 10px rgba(46, 213, 115, 0.5); }
+        .status-indicator.warning { background: #ffa502; box-shadow: 0 0 10px rgba(255, 165, 2, 0.5); }
+        .status-indicator.danger { background: #ff4757; box-shadow: 0 0 10px rgba(255, 71, 87, 0.5); }
+
+        /* 添加毛玻璃效果 */
+        .glass-effect {
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+        }
+
+        /* 优化图标样式 */
+        .metric-icon {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            font-size: 24px;
+            opacity: 0.2;
+            color: #00f0ff;
+        }
+
+        /* 添加渐变背景 */
+        .gradient-bg {
+            background: linear-gradient(135deg, rgba(0, 15, 29, 0.95), rgba(0, 15, 29, 0.8));
+        }
+
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 15, 29, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .loading-content {
+            text-align: center;
+            color: #00f0ff;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(0, 240, 255, 0.3);
+            border-top-color: #00f0ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(255, 71, 87, 0.1);
+            border-left: 4px solid #ff4757;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 0 8px 8px 0;
+            color: #ff4757;
+        }
+
+        .error-message i {
+            margin-right: 8px;
+        }
+
+        .error-details {
+            margin-top: 8px;
+            font-size: 12px;
+            color: rgba(255, 71, 87, 0.8);
+        }
+
+        .debug-info {
+            background: rgba(0, 0, 0, 0.8);
+            color: #00ff00;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+
+        .loading-progress {
+            width: 200px;
+            height: 4px;
+            background: rgba(0, 240, 255, 0.1);
+            border-radius: 2px;
+            margin-top: 15px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            width: 0;
+            background: linear-gradient(90deg, #00f0ff, #0066ff);
+            transition: width 0.3s ease;
+        }
+
+        .loading {
+            transition: opacity 0.3s ease;
+        }
+
+        .loading-text {
+            margin: 10px 0;
+            color: #00f0ff;
+            font-size: 14px;
+        }
+
+        .tooltip-custom {
+            background: rgba(0, 15, 29, 0.95) !important;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 240, 255, 0.2) !important;
+            border-radius: 8px !important;
+            padding: 12px !important;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3) !important;
+        }
+
+        .tooltip-title {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 8px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 8px;
+        }
+
+        .tooltip-item {
+            display: flex;
+            align-items: center;
+            margin: 6px 0;
+            font-size: 13px;
+        }
+
+        .tooltip-value {
+            color: #00f0ff;
+            font-weight: 500;
+            margin-left: 4px;
+        }
+
+        .tooltip-unit {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 12px;
+            margin-left: 2px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-info">
+            <h1>健康数据分析报告</h1>
+                <div class="user-info" id="userInfo" style="
+                    margin-top: 10px;
+                    font-size: 14px;
+                    color: rgba(255, 255, 255, 0.8);">
+                </div>
+            </div>
+            <div class="date-picker-container">
+                <i class="fas fa-calendar-alt"></i>
+                <input type="text" id="dateRange" class="date-picker" readonly>
+                <div class="quick-select">
+                    <div class="quick-select-option" data-days="7">最近7天</div>
+                    <div class="quick-select-option" data-days="30">最近30天</div>
+                    <div class="quick-select-option" data-days="90">最近90天</div>
+                    <div class="quick-select-option" data-type="month">本月</div>
+                    <div class="quick-select-option" data-type="last-month">上月</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="charts-grid">
+            <!-- 健康评分仪表盘 -->
+            <div class="chart-container">
+                <div class="chart-title">健康评分概览</div>
+                <div class="chart-content" id="healthScoreChart"></div>
+            </div>
+            
+            <!-- 时间序列趋势图 -->
+            <div class="chart-container">
+                <div class="chart-title">健康指标趋势</div>
+                <div class="chart-content" id="timeSeriesChart"></div>
+            </div>
+            
+            <!-- 异常值分布图 -->
+            <div class="chart-container">
+                <div class="chart-title">异常值分布</div>
+                <div class="chart-content" id="anomalyChart"></div>
+            </div>
+            
+            <!-- 指标对比图 -->
+            <div class="chart-container">
+                <div class="chart-title">指标评分对比</div>
+                <div class="chart-content" id="metricComparisonChart"></div>
+            </div>
+        </div>
+
+        <!-- 健康洞察部分 -->
+        <div class="health-insights">
+            <h2>健康洞察</h2>
+            <div id="healthInsights" class="health-insights-container">
+                <!-- 健康评分和状态 -->
+                <div class="health-score">
+                    <div class="score-value" id="overallScore">--</div>
+                    <div class="score-level" id="healthStatus">--</div>
+                </div>
+                
+                <!-- 健康指标详情 -->
+                <div class="metrics-details">
+                    <h3>指标详情</h3>
+                    <div id="metricsList" class="metrics-grid">
+                        <!-- 动态填充指标详情 -->
+                    </div>
+                </div>
+                
+                <!-- 健康建议 -->
+                <div class="health-suggestions">
+                    <h3>健康建议</h3>
+                    <div id="suggestionsList">
+                        <!-- 动态填充健康建议 -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const chartInstances = new Map();
+
+        function initCharts() {
+            // 检查ECharts是否加载
+            if (typeof echarts === 'undefined') {
+                console.error('ECharts 未加载，无法初始化图表');
+                return false;
+            }
+
+            console.log('开始初始化图表...');
+            
+            const chartIds = [
+                'healthScoreChart',
+                'timeSeriesChart',
+                'anomalyChart',
+                'metricComparisonChart'
+            ];
+            
+            let successCount = 0;
+            
+            chartIds.forEach(id => {
+                const chartDom = document.getElementById(id);
+                if (chartDom) {
+                    try {
+                        const chart = echarts.init(chartDom, null, {
+                            renderer: 'canvas',
+                            useDirtyRect: false
+                        });
+                        chart.setOption({
+                            backgroundColor: 'transparent',
+                            textStyle: {
+                                color: '#fff'
+                            }
+                        });
+                        chartInstances.set(id, chart);
+                        console.log(`图表 ${id} 初始化成功`);
+                        successCount++;
+                    } catch (error) {
+                        console.error(`图表 ${id} 初始化失败:`, error);
+                    }
+                } else {
+                    console.error(`找不到图表容器: ${id}`);
+                }
+            });
+            
+            console.log(`图表初始化完成，成功: ${successCount}/${chartIds.length}`);
+            return successCount === chartIds.length;
+        }
+
+        function resizeCharts() {
+            chartInstances.forEach(chart => {
+                if (chart) {
+                    chart.resize();
+                }
+            });
+        }
+
+        // 添加缓存机制
+        const dataCache = new Map();
+        const CACHE_EXPIRY = 5 * 60 * 1000; // 缓存5分钟
+
+        // 数据处理工具函数
+        const dataProcessor = {
+            // 数据降采样
+            downsample(data, targetPoints = 100) {
+                if (!data || data.length <= targetPoints) return data;
+                
+                const factor = Math.floor(data.length / targetPoints);
+                return data.filter((_, index) => index % factor === 0);
+            },
+
+            // 数据聚合
+            aggregate(data, interval = '1h') {
+                if (!data || !data.length) return [];
+                
+                const result = [];
+                let current = {
+                    timestamp: data[0].timestamp,
+                    values: []
+                };
+                
+                data.forEach(item => {
+                    if (this.isSameInterval(item.timestamp, current.timestamp, interval)) {
+                        current.values.push(item.value);
+                    } else {
+                        result.push({
+                            timestamp: current.timestamp,
+                            value: this.calculateAverage(current.values)
+                        });
+                        current = {
+                            timestamp: item.timestamp,
+                            values: [item.value]
+                        };
+                    }
+                });
+                
+                if (current.values.length) {
+                    result.push({
+                        timestamp: current.timestamp,
+                        value: this.calculateAverage(current.values)
+                    });
+                }
+                
+                return result;
+            },
+
+            // 判断是否在同一时间间隔内
+            isSameInterval(timestamp1, timestamp2, interval) {
+                const t1 = dayjs(timestamp1);
+                const t2 = dayjs(timestamp2);
+                
+                switch(interval) {
+                    case '1h': return t1.isSame(t2, 'hour');
+                    case '1d': return t1.isSame(t2, 'day');
+                    case '1w': return t1.isSame(t2, 'week');
+                    default: return t1.isSame(t2, 'hour');
+                }
+            },
+
+            // 计算平均值
+            calculateAverage(values) {
+                if (!values.length) return 0;
+                return values.reduce((sum, val) => sum + val, 0) / values.length;
+            },
+
+            // 选择合适的时间间隔
+            selectTimeInterval(startDate, endDate) {
+                const days = dayjs(endDate).diff(startDate, 'day');
+                if (days <= 7) return '1h';
+                if (days <= 30) return '1d';
+                return '1w';
+            }
+        };
+
+        // 数据获取函数
+        async function fetchData(startDate, endDate) {
+            try {
+                showLoading();
+                const urlParams = new URLSearchParams(window.location.search);
+                const customerId = urlParams.get('customerId') || '1';
+                const deptId = urlParams.get('deptId') || '';
+                const userId = urlParams.get('userId') || '';
+                let deptName = urlParams.get('deptName') || '';
+                let userName = urlParams.get('userName') || '';
+                
+                // 处理部门名称和用户名
+                try {
+                    // 如果是编码后的字符串，进行解码
+                    deptName = deptName ? decodeURIComponent(deptName) : '';
+                    console.log('deptName',deptName);
+                    userName = userName ? decodeURIComponent(userName) : '';
+                    
+                    // 如果是undefined或null，设置为空字符串
+                    if (deptName === 'undefined' || deptName === 'null') {
+                        deptName = '';
+                    }
+                    if (userName === 'undefined' || userName === 'null') {
+                        userName = '';
+                    }
+                    
+                  
+                } catch (e) {
+                    console.error('部门名称或用户名解码失败:', e);
+                    deptName = '';
+                    userName = '';
+                }
+                
+                // 更新用户信息显示
+                const userInfoElement = document.getElementById('userInfo');
+                if (userInfoElement) {
+                    let userInfoHtml = '';
+                    if (deptName) {
+                        userInfoHtml += `
+                            <div class="user-info-item">
+                                <i class="fas fa-building"></i>
+                                <span>部门：${deptName}</span>
+                            </div>`;
+                    }
+                    if (userName) {
+                        userInfoHtml += `
+                            <div class="user-info-item">
+                                <i class="fas fa-user"></i>
+                                <span>用户：${userName}</span>
+                            </div>`;
+                    }
+                    userInfoElement.innerHTML = userInfoHtml;
+                }
+
+                console.log('Fetching data with params:', {
+                    customerId,
+                    deptId,
+                    userId,
+                    startDate,
+                    endDate
+                });
+
+                let url = `./get_all_health_data_by_orgIdAndUserId?orgId=${customerId}`;
+                
+                // 添加部门和用户ID参数（如果存在）
+                if (deptId) {
+                    url += `&deptId=${deptId}`;
+                }
+                if (userId) {
+                    url += `&userId=${userId}`;
+                }
+                
+                // 添加日期参数
+                url += `&startDate=${startDate}&endDate=${endDate}`;
+
+                const response = await fetch(url);
+                const data = await response.json();
+                console.log('Received response:', data);
+                
+                // 添加调试信息：输出完整的API响应
+                console.log('=== API 响应调试信息 ===');
+                console.log('响应状态:', data.success);
+                console.log('响应消息:', data.message);
+                console.log('数据结构:', data.data ? Object.keys(data.data) : 'null');
+                if (data.data) {
+                    console.log('完整数据结构:', JSON.stringify(data.data, null, 2));
+                    if (data.data.summary) {
+                        console.log('Summary 字段:', data.data.summary);
+                    }
+                    if (data.data.healthScores) {
+                        console.log('HealthScores 字段:', data.data.healthScores);
+                    }
+                    if (data.data.timeSeriesData) {
+                        console.log('TimeSeriesData 字段:', data.data.timeSeriesData);
+                    }
+                }
+                console.log('========================');
+
+                if (!data || !data.success) {
+                    throw new Error(data.error || data.message || '数据获取失败');
+                }
+
+                // 检查数据结构
+                if (!data.data) {
+                    throw new Error('返回数据格式不正确：缺少data字段');
+                }
+                
+                // 检查前端期望的字段是否存在
+                const expectedFields = ['summary', 'healthScores', 'timeSeriesData'];
+                const missingFields = expectedFields.filter(field => !data.data[field]);
+                if (missingFields.length > 0) {
+                    console.warn('缺少的字段:', missingFields);
+                    console.warn('实际的字段:', Object.keys(data.data));
+                    
+                    // 如果字段名不匹配，尝试自动映射
+                    if (data.data.timeSeries && !data.data.timeSeriesData) {
+                        console.log('自动映射：timeSeries -> timeSeriesData');
+                        data.data.timeSeriesData = data.data.timeSeries;
+                    }
+                }
+
+                // 更新图表
+                updateCharts(data);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                showError(error.message || '发生错误，请检查网络连接');
+            } finally {
+                hideLoading();
+            }
+        }
+
+        // 数据处理函数
+        function processData(data, interval) {
+            if (!data.data.timeSeriesData) return data;
+
+            const processed = {
+                ...data,
+                data: {
+                    ...data.data,
+                    timeSeriesData: {
+                        ...data.data.timeSeriesData
+                    }
+                }
+            };
+
+            // 处理时间序列数据
+            if (processed.data.timeSeriesData.metrics) {
+                Object.keys(processed.data.timeSeriesData.metrics).forEach(metric => {
+                    const metricData = processed.data.timeSeriesData.metrics[metric];
+                    processed.data.timeSeriesData.metrics[metric] = dataProcessor.aggregate(metricData, interval);
+                });
+            }
+
+            // 处理异常数据
+            if (processed.data.timeSeriesData.anomalies) {
+                Object.keys(processed.data.timeSeriesData.anomalies).forEach(metric => {
+                    const anomalyData = processed.data.timeSeriesData.anomalies[metric];
+                    processed.data.timeSeriesData.anomalies[metric] = dataProcessor.downsample(anomalyData);
+                });
+            }
+
+            return processed;
+        }
+
+        // 缓存检查函数
+        function checkCache(key) {
+            const cached = dataCache.get(key);
+            if (!cached) return null;
+            
+            const now = Date.now();
+            if (now - cached.timestamp > CACHE_EXPIRY) {
+                dataCache.delete(key);
+                return null;
+            }
+            
+            return cached.data;
+        }
+
+        // 更新缓存函数
+        function updateCache(key, data) {
+            dataCache.set(key, {
+                data,
+                timestamp: Date.now()
+            });
+        }
+
+        // 优化图表更新函数
+        function updateCharts(data) {
+            console.log('Updating charts with data:', data);
+
+            try {
+                if (!data.data) {
+                    throw new Error('无效的数据结构');
+                }
+
+                const { summary, healthScores, timeSeriesData } = data.data;
+                
+                // 检查是否有有效的健康数据
+                if (!healthScores || !healthScores.factors || Object.keys(healthScores.factors).length === 0) {
+                    console.warn('健康数据为空，显示空状态提示');
+                    showEmptyDataState();
+                    return;
+                }
+                
+                // 使用 requestAnimationFrame 优化渲染
+                requestAnimationFrame(() => {
+                    // 批量更新图表
+                    Promise.all([
+                        updateHealthScoreChart(summary, healthScores),
+                        updateHealthInsights(healthScores),
+                        updateTimeSeriesChart(timeSeriesData),
+                        updateAnomalyChart(timeSeriesData),
+                        updateMetricComparisonChart(healthScores)
+                    ]).catch(error => {
+                        console.error('Error updating charts:', error);
+                        showError('图表更新过程中发生错误: ' + error.message);
+                    });
+                });
+
+            } catch (error) {
+                console.error('Error processing data:', error);
+                showError(error.message || '数据处理过程中发生错误');
+            }
+        }
+        
+        // 显示空数据状态
+        function showEmptyDataState() {
+            const containers = [
+                'healthScoreChart',
+                'timeSeriesChart', 
+                'anomalyChart',
+                'metricComparisonChart'
+            ];
+            
+            containers.forEach(containerId => {
+                const container = document.getElementById(containerId);
+                if (container) {
+                    container.innerHTML = `
+                        <div style="
+                            display: flex;
+                            flex-direction: column;
+                            align-items: center;
+                            justify-content: center;
+                            height: 100%;
+                            color: rgba(255,255,255,0.6);
+                            text-align: center;
+                            padding: 40px;
+                        ">
+                            <i class="fas fa-chart-line" style="
+                                font-size: 48px;
+                                color: #00f0ff;
+                                margin-bottom: 20px;
+                                opacity: 0.3;
+                            "></i>
+                            <div style="font-size: 16px; margin-bottom: 10px;">
+                                暂无健康数据
+                            </div>
+                            <div style="font-size: 14px; color: rgba(255,255,255,0.4);">
+                                所选时间范围内无相关数据记录
+                            </div>
+                        </div>
+                    `;
+                }
+            });
+            
+            // 显示空的健康洞察
+            const healthInsights = document.getElementById('healthInsights');
+            if (healthInsights) {
+                healthInsights.innerHTML = `
+                    <div class="no-data-message" style="
+                        text-align: center;
+                        padding: 40px;
+                        background: rgba(0,15,29,0.8);
+                        border-radius: 8px;
+                        margin: 20px 0;
+                        border: 1px solid rgba(0,240,255,0.2);">
+                        <i class="fas fa-info-circle" style="
+                            font-size: 48px;
+                            color: #00f0ff;
+                            margin-bottom: 20px;
+                            display: block;"></i>
+                        <div style="color: #fff; font-size: 16px;">
+                            所选时间范围内暂无健康数据
+                        </div>
+                        <div style="color: rgba(255,255,255,0.6); font-size: 14px; margin-top: 10px;">
+                            请尝试选择其他时间范围或确认数据是否正确同步
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        // 优化加载状态显示
+        function showLoading() {
+            const loading = document.createElement('div');
+            loading.className = 'loading';
+            loading.innerHTML = `
+                <div class="loading-content">
+                    <div class="loading-spinner"></div>
+                    <div class="loading-text">数据加载中...</div>
+                    <div class="loading-progress">
+                        <div class="progress-bar"></div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(loading);
+
+            // 添加进度条动画
+            const progressBar = loading.querySelector('.progress-bar');
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 90) progress = 90;
+                progressBar.style.width = `${progress}%`;
+            }, 500);
+
+            // 保存interval ID以便清除
+            loading.dataset.progressInterval = progressInterval;
+        }
+
+        function hideLoading() {
+            const loading = document.querySelector('.loading');
+            if (loading) {
+                // 清除进度条动画
+                clearInterval(loading.dataset.progressInterval);
+                
+                // 完成进度条
+                const progressBar = loading.querySelector('.progress-bar');
+                if (progressBar) {
+                    progressBar.style.width = '100%';
+                }
+
+                // 添加淡出动画
+                loading.style.opacity = '0';
+                setTimeout(() => loading.remove(), 300);
+            }
+        }
+
+        function updateHealthScoreChart(summary, healthScores) {
+            const chart = chartInstances.get('healthScoreChart');
+            if (!chart) {
+                console.error('健康评分图表实例不存在');
+                return;
+            }
+
+            console.log('更新健康评分图表，summary:', summary, 'healthScores:', healthScores);
+
+            // 检查必需的数据
+            if (!summary || !healthScores) {
+                console.error('健康评分图表数据不完整');
+                return;
+            }
+
+            // 获取URL参数中的部门和用户信息并打印日志
+            const urlParams = new URLSearchParams(window.location.search);
+            const deptName = decodeURIComponent(urlParams.get('deptName') || '');
+            const userName = decodeURIComponent(urlParams.get('userName') || '');
+            
+            console.log('URL Parameters:', {
+                raw: window.location.search,
+                deptName: urlParams.get('deptName'),
+                decodedDeptName: deptName,
+                userName: urlParams.get('userName'),
+                decodedUserName: userName
+            });
+            
+            // 构建用户信息显示文本
+            let userInfoText = '';
+            if (deptName && userName) {
+                userInfoText = `\n所属部门：${deptName}\n用户姓名：${userName}`;
+            } else if (deptName) {
+                userInfoText = `\n所属部门：${deptName}`;
+            } else if (userName) {
+                userInfoText = `\n用户姓名：${userName}`;
+            }
+
+            // 根据分数确定状态和颜色
+            let statusColor;
+            let statusClass;
+            const score = summary.overallScore || 0;
+            
+            if (score >= 90) {
+                statusColor = ['#2ed573', '#7bed9f'];
+                statusClass = 'excellent';
+            } else if (score >= 80) {
+                statusColor = ['#00f0ff', '#0066ff'];
+                statusClass = 'good';
+            } else if (score >= 70) {
+                statusColor = ['#ffa502', '#ff793f'];
+                statusClass = 'normal';
+            } else {
+                statusColor = ['#ff4757', '#ff6b81'];
+                statusClass = 'warning';
+            }
+
+            const startDate = summary.timeRange ? dayjs(summary.timeRange.start).format('YYYY-MM-DD HH:mm') : '';
+            const endDate = summary.timeRange ? dayjs(summary.timeRange.end).format('YYYY-MM-DD HH:mm') : '';
+            const totalRecords = summary.totalRecords || 0;
+
+            // 从healthScores中获取各指标权重信息
+            const factors = healthScores.factors || {};
+            const weightGroups = {
+                basic: {
+                    name: '基础指标',
+                    metrics: ['heart_rate', 'blood_oxygen', 'temperature', 'pressure_high', 'pressure_low'],
+                    totalWeight: 0
+                },
+                activity: {
+                    name: '活动指标',
+                    metrics: ['step', 'calorie'],
+                    totalWeight: 0
+                },
+                stress: {
+                    name: '压力指标',
+                    metrics: ['stress'],
+                    totalWeight: 0
+                }
+            };
+
+            // 计算各组权重总和
+            Object.values(weightGroups).forEach(group => {
+                group.totalWeight = group.metrics.reduce((sum, metric) => {
+                    return sum + (factors[metric]?.weight || 0) * 100;
+                }, 0);
+            });
+
+            // 构建评分规则说明
+            const scoringRules = `
+                <div style="
+                    margin-top: 20px;
+                    padding: 15px;
+                    background: rgba(0, 15, 29, 0.6);
+                    border-radius: 8px;
+                    border: 1px solid rgba(0, 240, 255, 0.2);
+                    font-size: 12px;
+                    color: rgba(255, 255, 255, 0.7);
+                    line-height: 1.6;
+                ">
+                    <div style="margin-bottom: 8px; color: #fff; font-size: 13px;">评分规则说明</div>
+                    <div>• ${weightGroups.basic.name} (${weightGroups.basic.totalWeight.toFixed(0)}%): 
+                        ${weightGroups.basic.metrics.map(m => factors[m]?.name || getMetricName(m)).filter(Boolean).join('、')}</div>
+                    <div>• ${weightGroups.activity.name} (${weightGroups.activity.totalWeight.toFixed(0)}%): 
+                        ${weightGroups.activity.metrics.map(m => factors[m]?.name || getMetricName(m)).filter(Boolean).join('、')}</div>
+                    <div>• ${weightGroups.stress.name} (${weightGroups.stress.totalWeight.toFixed(0)}%): 
+                        ${weightGroups.stress.metrics.map(m => factors[m]?.name || getMetricName(m)).filter(Boolean).join('、')}</div>
+                </div>
+            `;
+
+            const option = {
+                backgroundColor: 'transparent',
+                title: {
+                    text: '健康评分概览',
+                    subtext: `数据统计周期：${startDate} 至 ${endDate}\n共计 ${totalRecords} 条数据记录${userInfoText}`,
+                    textStyle: { 
+                        color: '#fff',
+                        fontSize: 16,
+                        fontWeight: 'normal'
+                    },
+                    subtextStyle: {
+                        color: 'rgba(255, 255, 255, 0.7)',
+                        fontSize: 12,
+                        lineHeight: 20
+                    },
+                    left: 'center',
+                    top: 10
+                },
+                series: [{
+                    type: 'gauge',
+                    startAngle: 90,
+                    endAngle: -270,
+                    pointer: {
+                        show: false
+                    },
+                    progress: {
+                        show: true,
+                        overlap: false,
+                        roundCap: true,
+                        clip: false,
+                        itemStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{
+                                offset: 0,
+                                color: statusColor[0]
+                            }, {
+                                offset: 1,
+                                color: statusColor[1]
+                            }])
+                        }
+                    },
+                    axisLine: {
+                        lineStyle: {
+                            width: 20,
+                            color: [[1, 'rgba(0, 240, 255, 0.1)']]
+                        }
+                    },
+                    splitLine: {
+                        show: false
+                    },
+                    axisTick: {
+                        show: false
+                    },
+                    axisLabel: {
+                        show: false
+                    },
+                    anchor: {
+                        show: true,
+                        showAbove: true,
+                        size: 20,
+                        itemStyle: {
+                            color: statusColor[0]
+                        }
+                    },
+                        title: {
+                        show: true,
+                        offsetCenter: [0, '20%'],
+                        fontSize: 14,
+                        color: '#fff'
+                        },
+                        detail: {
+                        valueAnimation: true,
+                        fontSize: 40,
+                        offsetCenter: [0, 0],
+                            formatter: function(value) {
+                            return '{value|' + value + '}{unit|分}';
+                        },
+                        rich: {
+                            value: {
+                                fontSize: 40,
+                                fontWeight: 'bold',
+                                color: statusColor[0]
+                            },
+                            unit: {
+                                fontSize: 14,
+                                color: 'rgba(255, 255, 255, 0.7)',
+                                padding: [0, 0, 0, 4]
+                            }
+                        }
+                    },
+                    data: [{
+                        value: score,
+                        name: score >= 90 ? '健康状况优秀' :
+                              score >= 80 ? '健康状况良好' :
+                              score >= 70 ? '健康状况正常' : '需要注意'
+                    }]
+                }]
+            };
+
+            try {
+                // 清除旧的配置
+                chart.clear();
+                // 设置新的配置
+                chart.setOption(option, true);
+                console.log('健康评分图表更新成功');
+
+                // 更新健康评分显示的样式
+                const scoreElement = document.querySelector('.score-value');
+                if (scoreElement) {
+                    scoreElement.className = `score-value ${statusClass}`;
+                    scoreElement.textContent = score.toFixed(1);
+                }
+
+                // 更新健康状态显示
+                const statusElement = document.querySelector('.score-level');
+                if (statusElement) {
+                    statusElement.textContent = score >= 90 ? '健康状况优秀' :
+                                              score >= 80 ? '健康状况良好' :
+                                              score >= 70 ? '健康状况正常' : '需要注意';
+                }
+            } catch (error) {
+                console.error('健康评分图表更新失败:', error);
+            }
+        }
+
+        function updateTimeSeriesChart(timeSeriesData) {
+            const chart = chartInstances.get('timeSeriesChart');
+            if (!chart) {
+                console.error('时间序列图表实例不存在');
+                return;
+            }
+
+            console.log('更新时间序列图表，timeSeriesData:', timeSeriesData);
+
+            try {
+                if (!timeSeriesData || !timeSeriesData.metrics) {
+                    console.warn('时间序列数据为空或格式不正确，显示空状态');
+                    chart.setOption({
+                        title: {
+                            text: '健康指标趋势',
+                            subtext: '暂无时间序列数据',
+                            textStyle: { color: '#fff', fontSize: 16 },
+                            subtextStyle: { color: 'rgba(255, 255, 255, 0.7)', fontSize: 12 },
+                            left: 'center',
+                            top: 'center'
+                        },
+                        backgroundColor: 'transparent'
+                    });
+                    return;
+                }
+
+                const { timestamps, metrics } = timeSeriesData;
+            
+                // 检查数据有效性
+                if (!timestamps || !Array.isArray(timestamps) || timestamps.length === 0) {
+                    console.warn('时间戳数据为空');
+                    return;
+                }
+
+                console.log('时间序列数据点数量:', timestamps.length);
+                console.log('指标数量:', Object.keys(metrics).length);
+            
+            // 定义指标分组：生理指标 vs 运动指标
+            const vitalMetrics = ['heart_rate', 'blood_oxygen', 'temperature', 'pressure_high', 'pressure_low', 'stress', 'sleep_duration', 'sleep_quality', 'sleep_deep', 'sleep_light', 'sleep_rem'];
+            const activityMetrics = ['step', 'distance', 'calorie'];
+            
+            // 分别构建两组series
+            const vitalSeries = [];
+            const activitySeries = [];
+            
+            Object.entries(metrics).forEach(([metric, values]) => {
+                if (!Array.isArray(values) || values.length === 0) {
+                    console.warn(`指标 ${metric} 数据为空`);
+                    return;
+                }
+
+                const seriesConfig = {
+                    name: getMetricName(metric),
+                    type: 'line',
+                    smooth: true,
+                    showSymbol: true,
+                    symbol: 'circle',
+                    symbolSize: 6,
+                    data: values,
+                    lineStyle: {
+                        width: 2,
+                        color: getMetricColor(metric)
+                    },
+                    itemStyle: {
+                        color: getMetricColor(metric),
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    },
+                    emphasis: {
+                        itemStyle: {
+                            borderWidth: 3,
+                            shadowBlur: 10,
+                            shadowColor: 'rgba(0, 240, 255, 0.3)'
+                        }
+                    },
+                    areaStyle: {
+                        opacity: 0.1,
+                        color: getMetricColor(metric)
+                    }
+                };
+                
+                if (vitalMetrics.includes(metric)) {
+                    // 生理指标使用左Y轴（yAxisIndex: 0）
+                    seriesConfig.yAxisIndex = 0;
+                    vitalSeries.push(seriesConfig);
+                } else if (activityMetrics.includes(metric)) {
+                    // 运动指标使用右Y轴（yAxisIndex: 1）
+                    seriesConfig.yAxisIndex = 1;
+                    // 运动指标使用虚线样式以区分
+                    seriesConfig.lineStyle.type = 'dashed';
+                    activitySeries.push(seriesConfig);
+                }
+            });
+            
+            // 合并所有series
+            const allSeries = [...vitalSeries, ...activitySeries];
+            console.log('生成的series数量:', allSeries.length);
+
+            const option = {
+                title: {
+                    text: '健康指标趋势',
+                    textStyle: { 
+                        color: '#fff',
+                        fontSize: 16,
+                        fontWeight: 'normal'
+                    },
+                    left: 'center',
+                    top: 10
+                },
+                tooltip: {
+                    trigger: 'axis',
+                    className: 'tooltip-custom',
+                    formatter: function(params) {
+                        const time = dayjs(params[0].axisValue).format('YYYY-MM-DD HH:mm:ss');
+                        let result = `<div class="tooltip-title">${time}</div>`;
+                        
+                        // 分组显示数据
+                        const vitalParams = params.filter(p => vitalMetrics.includes(Object.keys(metrics).find(m => getMetricName(m) === p.seriesName)));
+                        const activityParams = params.filter(p => activityMetrics.includes(Object.keys(metrics).find(m => getMetricName(m) === p.seriesName)));
+                        
+                        if (vitalParams.length > 0) {
+                            result += '<div style="margin-top:8px;color:#00f7ff;font-weight:bold;">生理指标</div>';
+                            vitalParams.forEach(param => {
+                                if (param.value !== undefined) {
+                                    const color = param.color;
+                                    const marker = `<span style="display:inline-block;margin-right:4px;border-radius:10px;width:8px;height:8px;background-color:${color};"></span>`;
+                                    result += `
+                                        <div class="tooltip-item">
+                                            ${marker}
+                                            <span style="color:rgba(255,255,255,0.8)">${param.seriesName}:</span>
+                                            <span class="tooltip-value">${param.value}</span>
+                                            <span class="tooltip-unit">${getMetricUnit(param.seriesName)}</span>
+                                        </div>`;
+                                }
+                            });
+                        }
+                        
+                        if (activityParams.length > 0) {
+                            result += '<div style="margin-top:8px;color:#2ed573;font-weight:bold;">运动指标</div>';
+                            activityParams.forEach(param => {
+                                if (param.value !== undefined) {
+                                    const color = param.color;
+                                    const marker = `<span style="display:inline-block;margin-right:4px;border-radius:10px;width:8px;height:8px;background-color:${color};"></span>`;
+                                    result += `
+                                        <div class="tooltip-item">
+                                            ${marker}
+                                            <span style="color:rgba(255,255,255,0.8)">${param.seriesName}:</span>
+                                            <span class="tooltip-value">${param.value}</span>
+                                            <span class="tooltip-unit">${getMetricUnit(param.seriesName)}</span>
+                                        </div>`;
+                                }
+                            });
+                        }
+                        
+                        return result;
+                    }
+                },
+                legend: {
+                    data: Object.keys(metrics).map(getMetricName),
+                    textStyle: { color: '#fff' },
+                    top: 40,
+                    icon: 'circle',
+                    // 使用rich样式区分两类指标
+                    formatter: function(name) {
+                        const metric = Object.keys(metrics).find(m => getMetricName(m) === name);
+                        if (activityMetrics.includes(metric)) {
+                            return `{activity|${name}}`;
+                        }
+                        return `{vital|${name}}`;
+                    },
+                    textStyle: {
+                        rich: {
+                            vital: {
+                                color: '#00f7ff',
+                                fontStyle: 'normal'
+                            },
+                            activity: {
+                                color: '#2ed573',
+                                fontStyle: 'italic'
+                            }
+                        }
+                    }
+                },
+                grid: {
+                    left: '8%',  // 增加左边距为左Y轴留空间
+                    right: '8%', // 增加右边距为右Y轴留空间
+                    bottom: '3%',
+                    top: 100,
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: timestamps,
+                    axisLine: {
+                        lineStyle: { color: 'rgba(255, 255, 255, 0.2)' }
+                    },
+                    axisTick: {
+                        show: false
+                    },
+                    axisLabel: {
+                        color: '#fff',
+                        formatter: function(value) {
+                            return dayjs(value).format('MM-DD HH:mm');
+                        }
+                    },
+                    splitLine: {
+                        show: true,
+                        lineStyle: {
+                            color: 'rgba(255, 255, 255, 0.1)',
+                            type: 'dashed'
+                        }
+                    }
+                },
+                yAxis: [
+                    {
+                        // 左Y轴：生理指标
+                        type: 'value',
+                        name: '生理指标',
+                        nameTextStyle: {
+                            color: '#00f7ff',
+                            fontSize: 12
+                        },
+                        position: 'left',
+                        axisLine: {
+                            lineStyle: { color: 'rgba(0, 247, 255, 0.3)' }
+                        },
+                        axisTick: {
+                            show: false
+                        },
+                        axisLabel: {
+                            color: '#00f7ff'
+                        },
+                        splitLine: {
+                            lineStyle: {
+                                color: 'rgba(255, 255, 255, 0.1)',
+                                type: 'dashed'
+                            }
+                        }
+                    },
+                    {
+                        // 右Y轴：运动指标
+                        type: 'value',
+                        name: '运动指标',
+                        nameTextStyle: {
+                            color: '#2ed573',
+                            fontSize: 12
+                        },
+                        position: 'right',
+                        axisLine: {
+                            lineStyle: { color: 'rgba(46, 213, 115, 0.3)' }
+                        },
+                        axisTick: {
+                            show: false
+                        },
+                        axisLabel: {
+                            color: '#2ed573'
+                        },
+                        splitLine: {
+                            show: false  // 右Y轴不显示分割线，避免重复
+                        }
+                    }
+                ],
+                series: allSeries,
+                animation: true,
+                animationDuration: 1000,
+                animationEasing: 'cubicInOut'
+            };
+
+                // 清除旧的数据
+                chart.clear();
+                // 设置新的配置
+                chart.setOption(option, true);
+                console.log('时间序列图表更新成功');
+
+            } catch (error) {
+                console.error('更新时间序列图表时发生错误:', error);
+                // 显示错误状态
+                chart.setOption({
+                    title: {
+                        text: '健康指标趋势',
+                        subtext: '图表更新失败',
+                        textStyle: { color: '#fff', fontSize: 16 },
+                        subtextStyle: { color: '#ff4757', fontSize: 12 },
+                        left: 'center',
+                        top: 'center'
+                    },
+                    backgroundColor: 'transparent'
+                });
+            }
+        }
+
+        function updateAnomalyChart(timeSeriesData) {
+            const chart = chartInstances.get('anomalyChart');
+            if (!chart) return;
+
+            const { anomalies } = timeSeriesData;
+            const series = Object.entries(anomalies).map(([metric, anomalyList]) => ({
+                name: getMetricName(metric),
+                type: 'scatter',
+                data: anomalyList.map(item => ({
+                    value: [item.timestamp, item.value],
+                    itemStyle: {
+                        color: item.type === 'high' ? 
+                            new echarts.graphic.RadialGradient(0.5, 0.5, 0.5, [
+                                { offset: 0, color: '#ff4757' },
+                                { offset: 1, color: '#ff6b81' }
+                            ]) : 
+                            new echarts.graphic.RadialGradient(0.5, 0.5, 0.5, [
+                                { offset: 0, color: '#2ed573' },
+                                { offset: 1, color: '#26ae60' }
+                            ])
+                    },
+                    symbolSize: item.type === 'high' ? 12 : 8
+                })),
+                symbol: 'circle',
+                symbolSize: 10,
+                emphasis: {
+                itemStyle: {
+                        shadowBlur: 10,
+                        shadowColor: 'rgba(0, 0, 0, 0.3)'
+                    }
+                },
+                markArea: {
+                    silent: true,
+                    itemStyle: {
+                        color: 'rgba(255, 71, 87, 0.05)'
+                    },
+                    data: anomalyList
+                        .filter(item => item.type === 'high')
+                        .map(item => [{
+                            xAxis: item.timestamp
+                        }, {
+                            xAxis: item.timestamp
+                        }])
+                }
+            }));
+
+            const option = {
+                title: {
+                    text: '',
+                    textStyle: { color: '#fff' }
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        const data = params.data || params;
+                        return `${params.seriesName}<br/>
+                                时间: ${data.value[0]}<br/>
+                                值: ${data.value[1]}<br/>
+                                类型: ${data.type === 'high' ? '异常偏高' : '异常偏低'}`;
+                    }
+                },
+                legend: {
+                    data: Object.keys(anomalies).map(getMetricName),
+                    textStyle: { color: '#fff' }
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    data: timeSeriesData.timestamps,
+                    axisLabel: { 
+                        color: '#fff',
+                        rotate: 30
+                    },
+                    splitLine: {
+                        show: true,
+                        lineStyle: {
+                            color: 'rgba(255, 255, 255, 0.1)',
+                            type: 'dashed'
+                        }
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: { color: '#fff' },
+                    splitLine: {
+                        show: true,
+                        lineStyle: {
+                            color: 'rgba(255, 255, 255, 0.1)',
+                            type: 'dashed'
+                        }
+                    }
+                },
+                series: series
+            };
+
+            chart.setOption(option);
+        }
+
+        function updateMetricComparisonChart(healthScores) {
+            const chart = chartInstances.get('metricComparisonChart');
+            if (!chart) return;
+
+            const { factors } = healthScores;
+            const metrics = Object.keys(factors);
+            const scores = metrics.map(metric => factors[metric].score);
+
+            // 准备雷达图的指标数据
+            const indicators = metrics.map(metric => {
+                const factor = factors[metric];
+                return {
+                    name: factor.name,
+                    max: 100,
+                    value: factor.score // 添加value属性以便tooltip使用
+                };
+            });
+
+            const option = {
+                title: {
+                    text: '指标评分对比',
+                    textStyle: { 
+                        color: '#fff',
+                        fontSize: 16,
+                        fontWeight: 'normal'
+                    },
+                    left: 'center',
+                    top: 10
+                },
+                tooltip: {
+                    trigger: 'item',
+                    formatter: function(params) {
+                        if (params.componentIndex === 0) { // 雷达图指标
+                            const metric = metrics[params.dataIndex];
+                            const factor = factors[metric];
+                            return `
+                                <div style="padding: 8px;">
+                                    <div style="font-size: 14px; color: #fff; margin-bottom: 8px;">
+                                        ${factor.name}
+                                    </div>
+                                    <div style="color: rgba(255,255,255,0.7); font-size: 12px;">
+                                        <div>评分：${factor.score.toFixed(1)}分</div>
+                                        <div>当前值：${factor.currentValue}${factor.unit}</div>
+                                        <div>参考范围：${factor.range?.[0] || '--'} ~ ${factor.range?.[1] || '--'} ${factor.unit}</div>
+                                    </div>
+                                    ${factor.message ? `
+                                        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); font-size: 12px;">
+                                            ${factor.message}
+                                        </div>
+                                    ` : ''}
+                                </div>`;
+                        }
+                        return '';
+                    },
+                    backgroundColor: 'rgba(0, 15, 29, 0.95)',
+                    borderColor: 'rgba(0, 240, 255, 0.2)',
+                    borderWidth: 1,
+                    padding: 0
+                },
+                legend: {
+                    show: false
+                },
+                radar: {
+                    indicator: indicators,
+                    shape: 'polygon',
+                    splitNumber: 4,
+                    center: ['50%', '55%'],
+                    radius: '65%',
+                    name: {
+                        textStyle: {
+                            color: '#fff',
+                            fontSize: 12
+                        }
+                    },
+                    splitLine: {
+                        lineStyle: {
+                            color: 'rgba(0, 240, 255, 0.1)'
+                        }
+                    },
+                    splitArea: {
+                        show: true,
+                        areaStyle: {
+                            color: ['rgba(0, 240, 255, 0.02)', 'rgba(0, 240, 255, 0.05)']
+                        }
+                    },
+                    axisLine: {
+                        lineStyle: {
+                            color: 'rgba(0, 240, 255, 0.2)'
+                        }
+                    }
+                },
+                series: [{
+                    type: 'radar',
+                    data: [{
+                        value: scores,
+                        name: '指标评分',
+                        symbol: 'circle',
+                        symbolSize: 6,
+                        lineStyle: {
+                            color: 'rgba(0, 240, 255, 0.8)',
+                            width: 2
+                        },
+                        itemStyle: {
+                            color: '#00f0ff'
+                        },
+                        areaStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{
+                                offset: 0,
+                                color: 'rgba(0, 240, 255, 0.3)'
+                            }, {
+                                offset: 1,
+                                color: 'rgba(0, 102, 255, 0.1)'
+                            }])
+                        },
+                        label: {
+                            show: true,
+                            formatter: function(params) {
+                                return params.value.toFixed(1);
+                            },
+                            color: '#fff',
+                            fontSize: 12
+                        }
+                    }]
+                }]
+            };
+
+            chart.setOption(option);
+        }
+
+        function updateHealthInsights(healthScores) {
+            try {
+                console.log('Updating health insights with data:', healthScores);
+
+                // 获取容器元素
+                const container = document.getElementById('healthInsights');
+                if (!container) {
+                    throw new Error('找不到健康洞察容器');
+                }
+
+                // 验证数据结构
+                if (!healthScores || typeof healthScores !== 'object') {
+                    throw new Error('无效的健康分数数据');
+                }
+                if (!healthScores || !healthScores.factors || Object.keys(healthScores.factors).length === 0) {
+                    container.innerHTML = `
+                        <div class="no-data-message" style="
+                            text-align: center;
+                            padding: 40px;
+                            background: rgba(0,15,29,0.8);
+                            border-radius: 8px;
+                            margin: 20px 0;
+                            border: 1px solid rgba(0,240,255,0.2);">
+                            <i class="fas fa-info-circle" style="
+                                font-size: 48px;
+                                color: #00f0ff;
+                                margin-bottom: 20px;
+                                display: block;"></i>
+                            <div style="color: #fff; font-size: 16px;">
+                                所选时间范围内暂无健康数据
+                            </div>
+                            <div style="color: rgba(255,255,255,0.6); font-size: 14px; margin-top: 10px;">
+                                请尝试选择其他时间范围或确认数据是否正确同步
+                            </div>
+                        </div>`;
+                    return;
+                }
+
+                // 更新总体评分
+                const scoreHtml = `
+                    <div class="health-score">
+                        <div class="score-value">${typeof healthScores.overall === 'number' ? healthScores.overall.toFixed(1) : '--'}</div>
+                        <div class="score-level">${healthScores.overallStatus?.message || '健康状态良好'}</div>
+                    </div>
+                `;
+            
+            // 更新指标详情
+                let metricsHtml = '<div class="metrics-details"><h3>指标详情</h3><div class="metrics-grid">';
+                
+                if (healthScores.factors && Object.keys(healthScores.factors).length > 0) {
+                    metricsHtml += Object.entries(healthScores.factors)
+                        .map(([metric, data]) => {
+                            if (!data) return '';
+                            
+                            const status = data.status || 'normal';
+                            const message = healthScores.details?.[metric]?.message || '';
+                            const score = typeof data.score === 'number' ? data.score.toFixed(1) : '--';
+                            const currentValue = typeof data.currentValue === 'number' ? data.currentValue.toFixed(1) : '--';
+                            
+                            return `
+                                <div class="metric-card ${status}">
+                                    <div class="metric-name">${data.name || getMetricName(metric)}</div>
+                                    <div class="metric-value">${currentValue}</div>
+                                    <div class="metric-unit">${data.unit || ''}</div>
+                                    <div class="metric-score">评分: ${score}分</div>
+                                    <div class="metric-message">${message}</div>
+                    </div>
+                            `;
+                        })
+                        .filter(html => html)
+                        .join('');
+                } else {
+                    metricsHtml += '<div class="error-message">暂无指标数据</div>';
+                }
+                
+                metricsHtml += '</div></div>';
+            
+            // 更新健康建议
+                let suggestionsHtml = '<div class="health-suggestions"><h3>健康建议</h3>';
+                
+                if (healthScores.details) {
+                    const categories = {
+                        activity: {
+                            title: '活动建议',
+                            icon: 'fa-walking',
+                            suggestions: []
+                        },
+                        vitals: {
+                            title: '生理指标建议',
+                            icon: 'fa-heartbeat',
+                            suggestions: []
+                        },
+                        lifestyle: {
+                            title: '生活方式建议',
+                            icon: 'fa-sun',
+                            suggestions: []
+                        }
+                    };
+
+                    // 分类处理建议
+                    Object.entries(healthScores.details)
+                        .filter(([metric, detail]) => detail && detail.status !== 'normal')
+                        .forEach(([metric, detail]) => {
+                            if (detail?.suggestions?.length > 0) {
+                                const metricName = healthScores.factors?.[metric]?.name || getMetricName(metric);
+                                const category = getMetricCategory(metric);
+                                
+                                detail.suggestions.forEach(suggestion => {
+                                    categories[category].suggestions.push({
+                                        title: `${metricName}改善建议`,
+                                        content: suggestion,
+                                        priority: detail.status === 'danger' ? 'high' : 'medium',
+                                        metric: {
+                                            name: metricName,
+                                            value: healthScores.factors?.[metric]?.currentValue,
+                                            unit: healthScores.factors?.[metric]?.unit
+                                        }
+                                    });
+                                });
+                            }
+                        });
+
+                    // 生成HTML
+                    Object.entries(categories).forEach(([key, category]) => {
+                        if (category.suggestions.length > 0) {
+                            suggestionsHtml += `
+                                <div class="suggestion-category">
+                                    <div class="suggestion-category-title">
+                                        <i class="fas ${category.icon}"></i>
+                                        ${category.title}
+                                    </div>
+                            `;
+
+                            category.suggestions.forEach(suggestion => {
+                                suggestionsHtml += `
+                        <div class="suggestion-item">
+                                        <div class="suggestion-priority ${suggestion.priority}">${getPriorityText(suggestion.priority)}</div>
+                                        <div class="suggestion-title">
+                                            <i class="fas fa-lightbulb"></i>
+                                            ${suggestion.title}
+                                        </div>
+                            <div class="suggestion-content">${suggestion.content}</div>
+                                        <div class="suggestion-metrics">
+                                            <div class="suggestion-metric">
+                                                <i class="fas fa-chart-line suggestion-metric-icon"></i>
+                                                当前${suggestion.metric.name}:
+                                                <span class="suggestion-metric-value">${suggestion.metric.value}</span>
+                                                <span class="tooltip-unit">${suggestion.metric.unit}</span>
+                        </div>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+
+                            suggestionsHtml += '</div>';
+                        }
+                    });
+            } else {
+                    suggestionsHtml += `
+                    <div class="suggestion-item">
+                            <div class="suggestion-title">
+                                <i class="fas fa-check-circle"></i>
+                                健康状况良好
+                            </div>
+                        <div class="suggestion-content">继续保持健康的生活方式，定期进行健康检查。</div>
+                    </div>
+                `;
+                }
+                
+                suggestionsHtml += '</div>';
+
+                // 更新容器内容
+                container.innerHTML = scoreHtml + metricsHtml + suggestionsHtml;
+
+            } catch (error) {
+                console.error('Error updating health insights:', error);
+                const container = document.getElementById('healthInsights');
+                if (container) {
+                    container.innerHTML = `
+                        <div class="error-message">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <div>健康数据加载失败</div>
+                            <div class="error-details">${error.message}</div>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        function getMetricName(metric) {
+            const names = {
+                'heart_rate': '心率',
+                'blood_oxygen': '血氧',
+                'temperature': '体温',
+                'pressure_high': '收缩压',
+                'pressure_low': '舒张压',
+                'stress': '压力指数',
+                'step': '步数',
+                'distance': '距离',
+                'calorie': '卡路里',
+                'sleepDuration': '睡眠时长',
+                'sleepQuality': '睡眠质量',
+                'sleepStage': '睡眠阶段',
+                'sleepDeep': '深度睡眠时长',
+                'sleepLight': '浅度睡眠时长',
+                'sleepRem': '快速眼动睡眠时长',
+                'sleepDeep': '深度睡眠时长',
+                
+            };
+            return names[metric] || metric;
+        }
+
+        function getMetricColor(metric) {
+            const colors = {
+                'heartRate': new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#ff4757' },
+                    { offset: 1, color: '#ff6b81' }
+                ]),
+                'bloodOxygen': new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#00f7ff' },
+                    { offset: 1, color: '#0097e6' }
+                ]),
+                'temperature': new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#ffa502' },
+                    { offset: 1, color: '#ff793f' }
+                ]),
+                'pressureHigh': new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#5352ed' },
+                    { offset: 1, color: '#1e3799' }
+                ]),
+                'pressureLow': new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#70a1ff' },
+                    { offset: 1, color: '#3742fa' }
+                ]),
+                'stress': new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#ff6348' },
+                    { offset: 1, color: '#ff4757' }
+                ]),
+                'step': new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#2ed573' },
+                    { offset: 1, color: '#26ae60' }
+                ]),
+                'distance': new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#1abc9c' },
+                    { offset: 1, color: '#16a085' }
+                ]),
+                'calorie': new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#f1c40f' },
+                    { offset: 1, color: '#f39c12' }
+                ]),
+                'sleepDuration': new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#9b59b6' },
+                    { offset: 1, color: '#8e44ad' }
+                ]),
+                'sleepQuality': new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#a55eea' },
+                    { offset: 1, color: '#8854d0' }
+                ]),
+                'sleepDeep': new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#5f27cd' },
+                    { offset: 1, color: '#341f97' }
+                ]),
+                'sleepLight': new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#786fa6' },
+                    { offset: 1, color: '#574b90' }
+                ]),
+                'sleepRem': new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: '#c44569' },
+                    { offset: 1, color: '#b33771' }
+                ])
+            };
+            return colors[metric] || new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: '#00f0ff' },
+                { offset: 1, color: '#0097e6' }
+            ]);
+        }
+
+        function getMetricUnit(metricName) {
+            const units = {
+                '血氧': '%',
+                '心率': 'bpm',
+                '收缩压': 'mmHg',
+                '舒张压': 'mmHg',
+                '步数': '步',
+                '卡路里': 'cal',
+                '压力指数': '',
+                '体温': '°C'
+            };
+            return units[metricName] || '';
+        }
+
+        function getMetricCategory(metric) {
+            const categories = {
+                step: 'activity',
+                calorie: 'activity',
+                heartRate: 'vitals',
+                bloodOxygen: 'vitals',
+                temperature: 'vitals',
+                pressureHigh: 'vitals',
+                pressureLow: 'vitals',
+                stress: 'lifestyle'
+            };
+            return categories[metric] || 'lifestyle';
+        }
+
+        function getPriorityText(priority) {
+            return {
+                high: '优先处理',
+                medium: '建议关注',
+                low: '参考建议'
+            }[priority] || '建议';
+        }
+
+        function showError(message) {
+            try {
+                hideLoading();
+                const container = document.querySelector('.health-insights-container');
+                if (container) {
+                    container.innerHTML = `
+                    <div class="error-message">
+                            <i class="fas fa-exclamation-circle"></i>
+                        <div>${message}</div>
+                    </div>
+                `;
+                }
+            } catch (error) {
+                console.error('Error showing error message:', error);
+            }
+        }
+
+        // 日期处理函数
+        function formatDate(date) {
+            return dayjs(date).format('YYYY-MM-DD');
+        }
+
+        function getDateRange(days) {
+            const end = dayjs();
+            const start = end.subtract(days - 1, 'day');
+            return [start.toDate(), end.toDate()];
+        }
+
+        function getMonthRange(monthsAgo = 0) {
+            const date = dayjs().subtract(monthsAgo, 'month');
+            return [
+                date.startOf('month').toDate(),
+                date.endOf('month').toDate()
+            ];
+        }
+
+        // 初始化日期选择器
+        function initDatePicker() {
+            const dateRangePicker = flatpickr("#dateRange", {
+                mode: "range",
+                dateFormat: "Y-m-d",
+                defaultDate: getDateRange(7),
+                locale: "zh",
+                theme: "dark",
+                disableMobile: true,
+                showMonths: 2,
+                animate: true,
+                position: "below",
+                onChange: function(selectedDates) {
+                    if (selectedDates.length === 2) {
+                        const start = formatDate(selectedDates[0]);
+                        const end = formatDate(selectedDates[1]);
+                        fetchData(start, end);
+                    }
+                }
+            });
+
+            // 快速选择处理
+            $('.quick-select-option').on('click', function(e) {
+                e.stopPropagation();
+                const days = $(this).data('days');
+                const type = $(this).data('type');
+                let dates;
+
+                if (days) {
+                    dates = getDateRange(days);
+                } else if (type === 'month') {
+                    dates = getMonthRange();
+                } else if (type === 'last-month') {
+                    dates = getMonthRange(1);
+                }
+
+                if (dates) {
+                    dateRangePicker.setDate(dates);
+                    $('.quick-select').fadeOut(200);
+                }
+            });
+
+            // 点击事件处理
+            $('.date-picker-container').on('click', function(e) {
+                e.stopPropagation();
+                $('.quick-select').fadeToggle(200);
+            });
+
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('.date-picker-container, .flatpickr-calendar').length) {
+                    $('.quick-select').fadeOut(200);
+                }
+            });
+
+            return dateRangePicker;
+        }
+
+        // 初始化
+        $(document).ready(function() {
+            // 设置中文语言
+            dayjs.locale('zh-cn');
+            
+            // 初始化日期选择器
+            const dateRangePicker = initDatePicker();
+
+            // 初始化图表
+            setTimeout(() => {
+                initCharts();
+                resizeCharts();
+            }, 100);
+
+            // 初始加载数据
+            const [start, end] = getDateRange(7);
+            fetchData(formatDate(start), formatDate(end));
+        });
+
+        // 优化窗口大小变化处理
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            if (resizeTimeout) {
+                clearTimeout(resizeTimeout);
+            }
+            resizeTimeout = setTimeout(() => {
+                resizeCharts();
+            }, 100);
+        });
+
+        // 人员管理饼图配置
+        function updatePersonnelChart(data) {
+            const chart = echarts.init(document.getElementById('personnelChart'));
+            const option = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{b}: {c}人 ({d}%)'
+                },
+                legend: {
+                    type: 'scroll',
+                    orient: 'vertical',
+                    right: '5%',
+                    top: 'middle',
+                    itemWidth: 10,
+                    itemHeight: 10,
+                    itemGap: 15,
+                    formatter: function(name) {
+                        const value = data.find(item => item.name === name).value;
+                        // 控制每行文字长度，超过指定长度时换行
+                        const maxLength = 12;
+                        if (name.length > maxLength) {
+                            return name.slice(0, maxLength) + '\n' + name.slice(maxLength) + ` (${value}人)`;
+                        }
+                        return `${name} (${value}人)`;
+                    },
+                    textStyle: {
+                        color: '#fff',
+                        fontSize: 12,
+                        lineHeight: 20,
+                        rich: {
+                            value: {
+                                color: '#00f0ff',
+                                fontSize: 12,
+                                padding: [0, 0, 0, 5]
+                            }
+                        }
+                    },
+                    pageTextStyle: {
+                        color: '#fff'
+                    },
+                    pageIconColor: '#00f0ff',
+                    pageIconInactiveColor: 'rgba(0, 240, 255, 0.3)',
+                    pageIconSize: 12,
+                    pageFormatter: '{current}/{total}',
+                    selector: [
+                        {
+                            type: 'all',
+                            title: '全选'
+                        },
+                        {
+                            type: 'inverse',
+                            title: '反选'
+                        }
+                    ],
+                    selectorLabel: {
+                        color: '#fff'
+                    },
+                    selectorPosition: 'end'
+                },
+                series: [{
+                    name: '部门分布',
+                    type: 'pie',
+                    radius: ['40%', '70%'],
+                    center: ['35%', '50%'],
+                    avoidLabelOverlap: true,
+                    itemStyle: {
+                        borderColor: '#001529',
+                        borderWidth: 2
+                    },
+                    label: {
+                        show: true,
+                        position: 'outside',
+                        formatter: '{b}\n{c}人',
+                        color: '#fff',
+                        fontSize: 12,
+                        lineHeight: 20,
+                        alignTo: 'edge',
+                        edgeDistance: '10%',
+                        minMargin: 5,
+                        overflow: 'truncate',
+                        lineHeight: 15
+                    },
+                    labelLine: {
+                        length: 15,
+                        length2: 10,
+                        maxSurfaceAngle: 80,
+                        lineStyle: {
+                            color: 'rgba(255, 255, 255, 0.3)'
+                        }
+                    },
+                    labelLayout: function(params) {
+                        const isLeft = params.labelRect.x < chart.getWidth() / 2;
+                        const points = params.labelLinePoints;
+                        // 调整标签位置，防止重叠
+                        return {
+                            labelLinePoints: points,
+                            x: isLeft ? 
+                                params.labelRect.x : 
+                                params.labelRect.x,
+                            y: params.labelRect.y,
+                            align: isLeft ? 'left' : 'right'
+                        };
+                    },
+                    emphasis: {
+                        label: {
+                            fontSize: 14,
+                            fontWeight: 'bold'
+                        },
+                        itemStyle: {
+                            shadowBlur: 10,
+                            shadowOffsetX: 0,
+                            shadowColor: 'rgba(0, 240, 255, 0.5)'
+                        }
+                    },
+                    data: data.map(item => ({
+                        name: item.name,
+                        value: item.value,
+                        itemStyle: {
+                            color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{
+                                offset: 0,
+                                color: item.color[0]
+                            }, {
+                                offset: 1,
+                                color: item.color[1]
+                            }])
+                        }
+                    }))
+                }]
+            };
+            
+            chart.setOption(option);
+            
+            // 监听窗口大小变化
+            window.addEventListener('resize', () => {
+                chart.resize();
+            });
+        }
+    </script>
+    <script src="https://kit.fontawesome.com/your-font-awesome-kit.js"></script>
+</body>
+</html> 
